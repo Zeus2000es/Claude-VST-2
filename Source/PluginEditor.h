@@ -15,14 +15,19 @@ public:
 private:
     AWCascadeProcessor& processor;
 
-    // Acceleration2 controls
-    juce::Slider accelLimitSlider;
-    juce::Slider accelDryWetSlider;
-    juce::Label  accelLimitLabel;
-    juce::Label  accelDryWetLabel;
+    // Apex Limiter knobs
+    juce::Slider apexLimitSlider,  apexDryWetSlider;
+    juce::Label  apexLimitLabel,   apexDryWetLabel;
+    juce::AudioProcessorValueTreeState::SliderAttachment apexLimitAttach, apexDryWetAttach;
 
-    juce::AudioProcessorValueTreeState::SliderAttachment accelLimitAttach;
-    juce::AudioProcessorValueTreeState::SliderAttachment accelDryWetAttach;
+    // Even Drive knobs
+    juce::Slider evenInputSlider, evenHighpassSlider, evenPresenceSlider,
+                 evenOutputSlider, evenDryWetSlider;
+    juce::Label  evenInputLabel, evenHighpassLabel, evenPresenceLabel,
+                 evenOutputLabel, evenDryWetLabel;
+    juce::AudioProcessorValueTreeState::SliderAttachment
+        evenInputAttach, evenHighpassAttach, evenPresenceAttach,
+        evenOutputAttach, evenDryWetAttach;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AWCascadeEditor)
 };
