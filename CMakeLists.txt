@@ -46,6 +46,8 @@ target_sources(AWCascade
         Source/PluginEditor.cpp
 )
 
+juce_generate_juce_header(AWCascade)
+
 target_compile_definitions(AWCascade
     PUBLIC
         JUCE_WEB_BROWSER=0
