@@ -3,7 +3,7 @@
 namespace
 {
     constexpr int kW      = 480;
-    constexpr int kH      = 512;
+    constexpr int kH      = 562;
     constexpr int kPad    = 16;
     constexpr int kTitleH = 46;
     constexpr int kKnobH  = 72;
@@ -13,16 +13,15 @@ namespace
     constexpr int kGap    = 10;
     constexpr int kSGap   = 6;
     constexpr int kSecH   = kSecHd + kBioH + kLabelH + kKnobH + 20; // 156
+    constexpr int kClipH  = kSecHd + kBioH + 6 + 20 + 8;            // 82
 
     // Red & black high-contrast palette
     const juce::Colour kBg      (0xff080808);
     const juce::Colour kPanel   (0xff1a0000);
     const juce::Colour kBorder  (0xff5c0000);
     const juce::Colour kAccent  (0xffcc0000);
-    const juce::Colour kKnob    (0xffdd1111);
     const juce::Colour kText    (0xffffffff);
     const juce::Colour kBio     (0xffcc9090);
-    const juce::Colour kTag     (0xffff2222);
 }
 
 //==============================================================================
@@ -47,16 +46,33 @@ static void setupKnob (juce::Slider& s, juce::Label& lbl,
 }
 
 //==============================================================================
+void AWCascadeEditor::setupBypassButton (juce::TextButton& btn, bool bypassed)
+{
+    btn.setClickingTogglesState (true);
+    btn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
+    btn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2a1000));
+    btn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff44bb44));
+    btn.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff775544));
+    btn.setButtonText (bypassed ? "BYPASS" : "ON");
+    addAndMakeVisible (btn);
+}
+
+//==============================================================================
 AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     : AudioProcessorEditor (p), processor (p),
-      apexLimitAttach    (p.apvts, "apexLimit",    apexLimitSlider),
-      apexDryWetAttach   (p.apvts, "apexDryWet",   apexDryWetSlider),
-      evenInputAttach    (p.apvts, "evenInput",     evenInputSlider),
-      evenHighpassAttach (p.apvts, "evenHighpass",  evenHighpassSlider),
-      evenPresenceAttach (p.apvts, "evenPresence",  evenPresenceSlider),
-      evenOutputAttach   (p.apvts, "evenOutput",    evenOutputSlider),
-      evenDryWetAttach   (p.apvts, "evenDryWet",    evenDryWetSlider),
-      swapAttach         (p.apvts, "swapOrder",     swapButton)
+      apexLimitAttach    (p.apvts, "apexLimit",      apexLimitSlider),
+      apexDryWetAttach   (p.apvts, "apexDryWet",     apexDryWetSlider),
+      apexBypassAttach   (p.apvts, "bypassApex",     apexBypassButton),
+      evenInputAttach    (p.apvts, "evenInput",       evenInputSlider),
+      evenHighpassAttach (p.apvts, "evenHighpass",    evenHighpassSlider),
+      evenPresenceAttach (p.apvts, "evenPresence",    evenPresenceSlider),
+      evenOutputAttach   (p.apvts, "evenOutput",      evenOutputSlider),
+      evenDryWetAttach   (p.apvts, "evenDryWet",      evenDryWetSlider),
+      evenBypassAttach   (p.apvts, "bypassEven",      evenBypassButton),
+      velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
+      velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
+      swapAttach         (p.apvts, "swapOrder",       swapButton),
+      oversampleAttach   (p.apvts, "oversample",      oversampleBox)
 {
     setupKnob (apexLimitSlider,    apexLimitLabel,    "Limit",    this);
     setupKnob (apexDryWetSlider,   apexDryWetLabel,   "Dry/Wet",  this);
@@ -66,6 +82,38 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     setupKnob (evenOutputSlider,   evenOutputLabel,   "Output",   this);
     setupKnob (evenDryWetSlider,   evenDryWetLabel,   "Dry/Wet",  this);
 
+    // Bypass buttons
+    const bool initBypassApex   = p.apvts.getRawParameterValue ("bypassApex")  ->load() > 0.5f;
+    const bool initBypassEven   = p.apvts.getRawParameterValue ("bypassEven")  ->load() > 0.5f;
+    const bool initBypassVelvet = p.apvts.getRawParameterValue ("bypassVelvet")->load() > 0.5f;
+    setupBypassButton (apexBypassButton,   initBypassApex);
+    setupBypassButton (evenBypassButton,   initBypassEven);
+    setupBypassButton (velvetBypassButton, initBypassVelvet);
+    apexBypassButton.onClick   = [this] {
+        apexBypassButton.setButtonText   (apexBypassButton.getToggleState()   ? "BYPASS" : "ON"); };
+    evenBypassButton.onClick   = [this] {
+        evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON"); };
+    velvetBypassButton.onClick = [this] {
+        velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON"); };
+
+    // Velvet ceiling slider (horizontal)
+    velvetCeilingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    velvetCeilingSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 60, 16);
+    velvetCeilingSlider.setColour (juce::Slider::trackColourId,           juce::Colour (0xffdd1111));
+    velvetCeilingSlider.setColour (juce::Slider::backgroundColourId,      juce::Colour (0xff2a0000));
+    velvetCeilingSlider.setColour (juce::Slider::thumbColourId,            juce::Colour (0xffff4444));
+    velvetCeilingSlider.setColour (juce::Slider::textBoxTextColourId,      juce::Colour (0xffffffff));
+    velvetCeilingSlider.setColour (juce::Slider::textBoxBackgroundColourId,juce::Colour (0xff1a0000));
+    velvetCeilingSlider.setColour (juce::Slider::textBoxOutlineColourId,   juce::Colours::transparentBlack);
+    addAndMakeVisible (velvetCeilingSlider);
+
+    velvetCeilingLabel.setText ("Ceiling", juce::dontSendNotification);
+    velvetCeilingLabel.setFont (juce::FontOptions (10.0f));
+    velvetCeilingLabel.setColour (juce::Label::textColourId, kBio);
+    velvetCeilingLabel.setJustificationType (juce::Justification::centredLeft);
+    addAndMakeVisible (velvetCeilingLabel);
+
+    // Swap button
     swapButton.setClickingTogglesState (true);
     swapButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff1a0000));
     swapButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff6b0000));
@@ -73,10 +121,8 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     swapButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffffffff));
     addAndMakeVisible (swapButton);
 
-    // Sync button text with initial parameter state
     const bool initSwap = p.apvts.getRawParameterValue ("swapOrder")->load() > 0.5f;
     swapButton.setButtonText (initSwap ? "EVEN  ->  APEX" : "APEX  ->  EVEN");
-
     swapButton.onClick = [this] {
         swapButton.setButtonText (swapButton.getToggleState() ? "EVEN  ->  APEX"
                                                                : "APEX  ->  EVEN");
@@ -84,10 +130,44 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
         repaint();
     };
 
+    // Oversampling ComboBox
+    oversampleBox.addItem ("Off", 1);
+    oversampleBox.addItem ("2x",  2);
+    oversampleBox.addItem ("4x",  3);
+    oversampleBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1a0000));
+    oversampleBox.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffcc9090));
+    oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff5c0000));
+    oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc0000));
+    addAndMakeVisible (oversampleBox);
+
     setSize (kW, kH);
+    startTimerHz (30);
 }
 
-AWCascadeEditor::~AWCascadeEditor() {}
+AWCascadeEditor::~AWCascadeEditor()
+{
+    stopTimer();
+}
+
+//==============================================================================
+void AWCascadeEditor::timerCallback()
+{
+    // Sync bypass button text (handles state restore / external automation)
+    apexBypassButton.setButtonText   (apexBypassButton.getToggleState()   ? "BYPASS" : "ON");
+    evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
+    velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
+
+    // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
+    auto decay = [](float cur, float incoming) -> float {
+        return incoming > cur ? incoming : cur * 0.85f;
+    };
+    dispInL  = decay (dispInL,  processor.meterInL.load());
+    dispInR  = decay (dispInR,  processor.meterInR.load());
+    dispOutL = decay (dispOutL, processor.meterOutL.load());
+    dispOutR = decay (dispOutR, processor.meterOutR.load());
+
+    repaint (0, 0, kW, kTitleH);
+}
 
 //==============================================================================
 void AWCascadeEditor::placeApexKnobs (int knobY)
@@ -119,25 +199,60 @@ void AWCascadeEditor::paint (juce::Graphics& g)
 {
     g.fillAll (kBg);
 
-    // Title bar
+    // ---- Title bar ----
     g.setColour (kPanel);
     g.fillRect (0, 0, kW, kTitleH);
     g.setColour (kAccent);
     g.fillRect (0, kTitleH - 2, kW, 2);
     g.setColour (kText);
     g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
-    g.drawText ("The Press", 0, 0, kW, kTitleH, juce::Justification::centred);
+    g.drawText ("The Press", 0, 0, kW, kTitleH - 14, juce::Justification::centred);
 
+    // ---- Meters ----
+    auto drawMeter = [&] (float level, int x, int y, int maxW, int h)
+    {
+        const float levelDb = level < 1e-5f ? -100.0f : 20.0f * std::log10 (level);
+        const float norm    = juce::jlimit (0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
+        const int   barW    = (int)(norm * maxW);
+
+        g.setColour (juce::Colour (0xff2a0000));
+        g.fillRect (x, y, maxW, h);
+        if (barW > 0)
+        {
+            const juce::Colour col = levelDb > -6.0f  ? juce::Colour (0xffff3300)
+                                   : levelDb > -18.0f ? juce::Colour (0xffcc0000)
+                                                       : juce::Colour (0xff660000);
+            g.setColour (col);
+            g.fillRect (x, y, barW, h);
+        }
+    };
+
+    const int mW  = kW / 2 - kPad - 10;
+    const int mXi = kPad + 4;
+    const int mXo = kW / 2 + 6;
+    const int mY1 = kTitleH - 12;
+    const int mY2 = kTitleH - 7;
+
+    drawMeter (dispInL,  mXi, mY1, mW, 4);
+    drawMeter (dispInR,  mXi, mY2, mW, 4);
+    drawMeter (dispOutL, mXo, mY1, mW, 4);
+    drawMeter (dispOutR, mXo, mY2, mW, 4);
+
+    g.setFont (juce::FontOptions (8.0f));
+    g.setColour (juce::Colour (0xff883333));
+    g.drawText ("IN",  mXi, mY1 - 9, 20, 8, juce::Justification::left);
+    g.drawText ("OUT", mXo, mY1 - 9, 24, 8, juce::Justification::left);
+
+    // ---- Section panels ----
     const bool swapped = swapButton.getToggleState();
 
-    // Section header data based on swap
     struct SecInfo { juce::String tag, bio; };
     const SecInfo sec1 = swapped
-        ? SecInfo { "EVEN DRIVE",    "Generates even-order harmonics, analogue weight, and leaves transients untouched." }
-        : SecInfo { "APEX LIMITER",  "Tracks waveform velocity and softens only the sharpest transient edges." };
+        ? SecInfo { "EVEN DRIVE",   "Generates even-order harmonics, analogue weight, and leaves transients untouched." }
+        : SecInfo { "APEX LIMITER", "Tracks waveform velocity and softens only the sharpest transient edges." };
     const SecInfo sec2 = swapped
-        ? SecInfo { "APEX LIMITER",  "Tracks waveform velocity and softens only the sharpest transient edges." }
-        : SecInfo { "EVEN DRIVE",    "Generates even-order harmonics, analogue weight, and leaves transients untouched." };
+        ? SecInfo { "APEX LIMITER", "Tracks waveform velocity and softens only the sharpest transient edges." }
+        : SecInfo { "EVEN DRIVE",   "Generates even-order harmonics, analogue weight, and leaves transients untouched." };
 
     auto drawSection = [&] (const SecInfo& s, int y, int h)
     {
@@ -146,7 +261,6 @@ void AWCascadeEditor::paint (juce::Graphics& g)
         g.setColour (kBorder);
         g.drawRoundedRectangle ((float)kPad, (float)y, (float)(kW - kPad*2), (float)h, 5.0f, 1.0f);
 
-        // Tag badge
         g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
         const int tagW = 110;
         g.setColour (kAccent);
@@ -154,27 +268,26 @@ void AWCascadeEditor::paint (juce::Graphics& g)
         g.setColour (kText);
         g.drawText (s.tag, kPad + 8, y + 7, tagW, 16, juce::Justification::centred);
 
-        // Bio
         g.setFont (juce::FontOptions (11.0f));
         g.setColour (kBio);
         g.drawText (s.bio, kPad + 10, y + 27, kW - kPad*2 - 20, kBioH,
                     juce::Justification::centredLeft, true);
     };
 
-    const int y1     = kTitleH + kGap;
-    const int ySwap  = y1 + kSecH + kSGap;
-    const int y2     = ySwap + 36 + kSGap;
-    const int yClip  = y2 + kSecH + kSGap;
+    const int y1    = kTitleH + kGap;
+    const int ySwap = y1 + kSecH + kSGap;
+    const int y2    = ySwap + 36 + kSGap;
+    const int yClip = y2 + kSecH + kSGap;
+    const int yOs   = yClip + kClipH + kSGap;
 
-    drawSection (sec1, y1,    kSecH);
-    drawSection (sec2, y2,    kSecH);
+    drawSection (sec1, y1, kSecH);
+    drawSection (sec2, y2, kSecH);
 
-    // Velvet Clip section
-    const int clipH = kSecHd + kBioH + 14;
+    // ---- Velvet Clip panel ----
     g.setColour (kPanel);
-    g.fillRoundedRectangle ((float)kPad, (float)yClip, (float)(kW - kPad*2), (float)clipH, 5.0f);
+    g.fillRoundedRectangle ((float)kPad, (float)yClip, (float)(kW - kPad*2), (float)kClipH, 5.0f);
     g.setColour (kBorder);
-    g.drawRoundedRectangle ((float)kPad, (float)yClip, (float)(kW - kPad*2), (float)clipH, 5.0f, 1.0f);
+    g.drawRoundedRectangle ((float)kPad, (float)yClip, (float)(kW - kPad*2), (float)kClipH, 5.0f, 1.0f);
     g.setFont (juce::FontOptions (9.5f, juce::Font::bold));
     g.setColour (kAccent);
     g.fillRoundedRectangle ((float)(kPad + 8), (float)(yClip + 7), 110.0f, 16.0f, 3.0f);
@@ -186,7 +299,12 @@ void AWCascadeEditor::paint (juce::Graphics& g)
                 kPad + 10, yClip + 27, kW - kPad*2 - 20, kBioH,
                 juce::Justification::centredLeft);
 
-    // Footer
+    // ---- Oversampling row ----
+    g.setFont (juce::FontOptions (10.5f));
+    g.setColour (kBio);
+    g.drawText ("Oversample:", 0, yOs + 5, kW / 2 + 20, 18, juce::Justification::centredRight);
+
+    // ---- Footer ----
     g.setFont (juce::FontOptions (10.0f));
     g.setColour (juce::Colour (0xff661111));
     g.drawText ("Made by Zeus", 0, kH - 16, kW, 14, juce::Justification::centred);
@@ -199,18 +317,36 @@ void AWCascadeEditor::resized()
     const int y1    = kTitleH + kGap;
     const int ySwap = y1 + kSecH + kSGap;
     const int y2    = ySwap + 36 + kSGap;
+    const int yClip = y2 + kSecH + kSGap;
+    const int yOs   = yClip + kClipH + kSGap;
 
-    // Swap button centered between sections
     swapButton.setBounds ((kW - 188) / 2, ySwap + 4, 188, 27);
 
-    // Knob offset inside section (below header + bio)
-    const int relY = kSecHd + kBioH + 4;
+    const int relY    = kSecHd + kBioH + 4;
+    const int bypassX = kW - kPad - 8 - 60;
 
-    if (!swapped) {
+    if (!swapped)
+    {
         placeApexKnobs (y1 + relY);
+        apexBypassButton.setBounds (bypassX, y1 + 5, 60, 16);
         placeEvenKnobs (y2 + relY);
-    } else {
-        placeEvenKnobs (y1 + relY);
-        placeApexKnobs (y2 + relY);
+        evenBypassButton.setBounds (bypassX, y2 + 5, 60, 16);
     }
+    else
+    {
+        placeEvenKnobs (y1 + relY);
+        evenBypassButton.setBounds (bypassX, y1 + 5, 60, 16);
+        placeApexKnobs (y2 + relY);
+        apexBypassButton.setBounds (bypassX, y2 + 5, 60, 16);
+    }
+
+    // Velvet section
+    velvetBypassButton.setBounds (bypassX, yClip + 5, 60, 16);
+    const int ceilX = kPad + 10;
+    const int ceilY = yClip + kSecHd + kBioH + 6;
+    velvetCeilingLabel.setBounds  (ceilX, ceilY, 52, 16);
+    velvetCeilingSlider.setBounds (ceilX + 54, ceilY, kW - kPad*2 - 20 - 54, 20);
+
+    // Oversampling ComboBox
+    oversampleBox.setBounds (kW / 2 + 24, yOs + 3, 90, 22);
 }

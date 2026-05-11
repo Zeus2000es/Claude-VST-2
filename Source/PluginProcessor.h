@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <atomic>
 
 class AWCascadeProcessor : public juce::AudioProcessor
 {
@@ -34,6 +35,10 @@ public:
     juce::AudioProcessorValueTreeState apvts;
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    // Meters: written by audio thread, read by UI thread
+    std::atomic<float> meterInL{0.0f}, meterInR{0.0f};
+    std::atomic<float> meterOutL{0.0f}, meterOutR{0.0f};
+
 private:
     // ---- Apex Limiter (Acceleration2) ----
     double sL[34], sR[34];
@@ -51,6 +56,12 @@ private:
     double lastSampleL_cs, lastSampleR_cs;
     double intermediateL[17], intermediateR[17];
     uint32_t fpdL_cs, fpdR_cs;
+
+    // ---- Oversampling ----
+    juce::dsp::Oversampling<float> os2x;
+    juce::dsp::Oversampling<float> os4x;
+
+    void processChain (float* L, float* R, int numSamples, double actualSR);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AWCascadeProcessor)
 };
