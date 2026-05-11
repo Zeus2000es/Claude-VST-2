@@ -14,6 +14,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
 {
     using PF   = juce::AudioParameterFloat;
     using PB   = juce::AudioParameterBool;
+    using PC   = juce::AudioParameterChoice;
     using PID  = juce::ParameterID;
     using Attr = juce::AudioParameterFloatAttributes;
     using NR   = juce::NormalisableRange<float>;
@@ -33,6 +34,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
             int w = juce::roundToInt (v * 100.0f);
             return juce::String (w) + "W/" + juce::String (100 - w) + "D";
         })));
+
+    layout.add (std::make_unique<PB> (PID ("bypassApex", 1), "Bypass Apex", false));
 
     // ---- Even Drive ----
     layout.add (std::make_unique<PF> (
@@ -55,7 +58,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
     layout.add (std::make_unique<PF> (
         PID ("evenPresence", 1), "Drive Presence", NR (0.0f, 1.0f, 0.001f), 0.5f,
         Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
-            const float val = (v - 0.5f) * 12.0f; // -6 to +6
+            const float val = (v - 0.5f) * 12.0f;
             if (val >= 0.0f) return "+" + juce::String (val, 1);
             return juce::String (val, 1);
         })));
@@ -74,8 +77,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
             return juce::String (w) + "W/" + juce::String (100 - w) + "D";
         })));
 
+    layout.add (std::make_unique<PB> (PID ("bypassEven", 1), "Bypass Even", false));
+
+    // ---- Velvet Clip ----
+    layout.add (std::make_unique<PF> (
+        PID ("velvetCeiling", 1), "Velvet Ceiling", NR (-6.0f, -0.1f, 0.01f), -0.4f,
+        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
+            return juce::String (v, 1) + " dB";
+        })));
+
+    layout.add (std::make_unique<PB> (PID ("bypassVelvet", 1), "Bypass Velvet", false));
+
     // ---- Swap order ----
     layout.add (std::make_unique<PB> (PID ("swapOrder", 1), "Swap Order", false));
+
+    // ---- Oversampling ----
+    layout.add (std::make_unique<PC> (
+        PID ("oversample", 1), "Oversample",
+        juce::StringArray { "Off", "2x", "4x" }, 0));
 
     return layout;
 }
@@ -84,7 +103,9 @@ AWCascadeProcessor::AWCascadeProcessor()
     : AudioProcessor (BusesProperties()
                          .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "Parameters", createParameterLayout())
+      apvts (*this, nullptr, "Parameters", createParameterLayout()),
+      os2x (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
+      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
 {
     prepareToPlay (44100.0, 512);
 }
@@ -92,7 +113,7 @@ AWCascadeProcessor::AWCascadeProcessor()
 AWCascadeProcessor::~AWCascadeProcessor() {}
 
 //==============================================================================
-void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)
+void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlock)
 {
     std::memset (sL, 0, sizeof (sL));   std::memset (sR, 0, sizeof (sR));
     m1L = m2L = m1R = m2R = 0.0;
@@ -112,9 +133,18 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerB
     std::memset (intermediateR, 0, sizeof (intermediateR));
     fpdL_cs = 1; while (fpdL_cs < 16386) fpdL_cs = (uint32_t)(rand() * (double)UINT32_MAX);
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
+
+    meterInL = meterInR = meterOutL = meterOutR = 0.0f;
+
+    os2x.initProcessing ((size_t) samplesPerBlock);
+    os4x.initProcessing ((size_t) samplesPerBlock);
 }
 
-void AWCascadeProcessor::releaseResources() {}
+void AWCascadeProcessor::releaseResources()
+{
+    os2x.reset();
+    os4x.reset();
+}
 
 bool AWCascadeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -124,20 +154,15 @@ bool AWCascadeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 }
 
 //==============================================================================
-void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                       juce::MidiBuffer& /*midiMessages*/)
+void AWCascadeProcessor::processChain (float* inL, float* inR,
+                                       int numSamples, double actualSR)
 {
-    juce::ScopedNoDenormals noDenormals;
+    const double overallscale = actualSR / 44100.0;
 
-    const int numSamples = buffer.getNumSamples();
-    if (numSamples == 0) return;
-
-    float* inL = buffer.getWritePointer (0);
-    float* inR = buffer.getWritePointer (1);
-
-    const double sr           = getSampleRate();
-    const double overallscale = sr / 44100.0;
-    const bool   doSwap       = apvts.getRawParameterValue ("swapOrder")->load() > 0.5f;
+    const bool doSwap       = apvts.getRawParameterValue ("swapOrder")->load()    > 0.5f;
+    const bool bypassApex   = apvts.getRawParameterValue ("bypassApex")->load()   > 0.5f;
+    const bool bypassEven   = apvts.getRawParameterValue ("bypassEven")->load()   > 0.5f;
+    const bool bypassVelvet = apvts.getRawParameterValue ("bypassVelvet")->load() > 0.5f;
 
     // ---- Apex Limiter per-block setup ----
     const double A         = (double) apvts.getRawParameterValue ("apexLimit") ->load();
@@ -147,8 +172,8 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     int spacing = (int)(1.73 * overallscale) + 1;
     if (spacing > 16) spacing = 16;
 
-    biquadA[0] = (20000.0 * (1.0 - (A * 0.618033988749894848204586))) / sr;
-    biquadB[0] = 20000.0 / sr;
+    biquadA[0] = (20000.0 * (1.0 - (A * 0.618033988749894848204586))) / actualSR;
+    biquadB[0] = 20000.0 / actualSR;
     biquadA[1] = biquadB[1] = 0.7071;
     {
         double K    = std::tan (juce::MathConstants<double>::pi * biquadA[0]);
@@ -172,6 +197,8 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // ---- Velvet Clip per-block setup ----
     int csSpacing = (int) std::floor (overallscale);
     if (csSpacing < 1) csSpacing = 1; if (csSpacing > 16) csSpacing = 16;
+    const double ceilingDb     = (double) apvts.getRawParameterValue ("velvetCeiling")->load();
+    const double ceilingLinear = std::pow (10.0, ceilingDb / 20.0);
 
     // ---- Per-sample loop ----
     for (int i = 0; i < numSamples; ++i)
@@ -180,9 +207,9 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         double sampleR = (double) inR[i];
 
         // ============================================================
-        //  APEX LIMITER — runs first unless swapped
+        //  APEX LIMITER — first position (not swapped)
         // ============================================================
-        if (!doSwap)
+        if (!doSwap && !bypassApex)
         {
             if (std::fabs (sampleL) < 1.18e-23) sampleL = fpdL_acc * 1.18e-17;
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_acc * 1.18e-17;
@@ -225,8 +252,9 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
 
         // ============================================================
-        //  EVEN DRIVE — always here
+        //  EVEN DRIVE
         // ============================================================
+        if (!bypassEven)
         {
             if (std::fabs (sampleL) < 1.18e-23) sampleL = fpdL_spi * 1.18e-17;
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_spi * 1.18e-17;
@@ -257,9 +285,9 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
 
         // ============================================================
-        //  APEX LIMITER — runs second if swapped
+        //  APEX LIMITER — second position (swapped)
         // ============================================================
-        if (doSwap)
+        if (doSwap && !bypassApex)
         {
             if (std::fabs (sampleL) < 1.18e-23) sampleL = fpdL_acc * 1.18e-17;
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_acc * 1.18e-17;
@@ -304,15 +332,16 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // ============================================================
         //  VELVET CLIP — always last
         // ============================================================
+        if (!bypassVelvet)
         {
             if (std::fabs (sampleL) < 1.18e-23) sampleL = fpdL_cs * 1.18e-17;
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_cs * 1.18e-17;
             { double ss=std::fabs(sampleL); if(ss<1.0)ss=1.0;else ss=1.0/ss;
               if(sampleL>1.57079633)sampleL=1.57079633; if(sampleL<-1.57079633)sampleL=-1.57079633;
-              sampleL=std::sin(sampleL)*0.9549925859; sampleL=(sampleL*ss)+(lastSampleL_cs*(1.0-ss)); }
+              sampleL=std::sin(sampleL)*ceilingLinear; sampleL=(sampleL*ss)+(lastSampleL_cs*(1.0-ss)); }
             { double ss=std::fabs(sampleR); if(ss<1.0)ss=1.0;else ss=1.0/ss;
               if(sampleR>1.57079633)sampleR=1.57079633; if(sampleR<-1.57079633)sampleR=-1.57079633;
-              sampleR=std::sin(sampleR)*0.9549925859; sampleR=(sampleR*ss)+(lastSampleR_cs*(1.0-ss)); }
+              sampleR=std::sin(sampleR)*ceilingLinear; sampleR=(sampleR*ss)+(lastSampleR_cs*(1.0-ss)); }
             intermediateL[csSpacing]=sampleL; sampleL=lastSampleL_cs;
             for(int x=csSpacing;x>0;--x) intermediateL[x-1]=intermediateL[x];
             lastSampleL_cs=intermediateL[0];
@@ -326,6 +355,67 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         inL[i] = (float) sampleL;
         inR[i] = (float) sampleR;
     }
+}
+
+//==============================================================================
+void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+                                       juce::MidiBuffer& /*midiMessages*/)
+{
+    juce::ScopedNoDenormals noDenormals;
+
+    const int numSamples = buffer.getNumSamples();
+    if (numSamples == 0) return;
+
+    // Measure input peaks
+    float inPeakL = 0.0f, inPeakR = 0.0f;
+    const float* rdL = buffer.getReadPointer (0);
+    const float* rdR = buffer.getReadPointer (1);
+    for (int i = 0; i < numSamples; ++i)
+    {
+        inPeakL = std::max (inPeakL, std::fabs (rdL[i]));
+        inPeakR = std::max (inPeakR, std::fabs (rdR[i]));
+    }
+    meterInL.store (inPeakL);
+    meterInR.store (inPeakR);
+
+    // Route through oversampler (or direct)
+    const int osMode = (int) apvts.getRawParameterValue ("oversample")->load();
+
+    if (osMode == 0)
+    {
+        processChain (buffer.getWritePointer (0), buffer.getWritePointer (1),
+                      numSamples, getSampleRate());
+    }
+    else
+    {
+        auto block = juce::dsp::AudioBlock<float> (buffer);
+        if (osMode == 1)
+        {
+            auto upBlock = os2x.processSamplesUp (block);
+            processChain (upBlock.getChannelPointer (0), upBlock.getChannelPointer (1),
+                          (int) upBlock.getNumSamples(), getSampleRate() * 2.0);
+            os2x.processSamplesDown (block);
+        }
+        else
+        {
+            auto upBlock = os4x.processSamplesUp (block);
+            processChain (upBlock.getChannelPointer (0), upBlock.getChannelPointer (1),
+                          (int) upBlock.getNumSamples(), getSampleRate() * 4.0);
+            os4x.processSamplesDown (block);
+        }
+    }
+
+    // Measure output peaks
+    float outPeakL = 0.0f, outPeakR = 0.0f;
+    rdL = buffer.getReadPointer (0);
+    rdR = buffer.getReadPointer (1);
+    for (int i = 0; i < numSamples; ++i)
+    {
+        outPeakL = std::max (outPeakL, std::fabs (rdL[i]));
+        outPeakR = std::max (outPeakR, std::fabs (rdR[i]));
+    }
+    meterOutL.store (outPeakL);
+    meterOutR.store (outPeakR);
 }
 
 //==============================================================================
