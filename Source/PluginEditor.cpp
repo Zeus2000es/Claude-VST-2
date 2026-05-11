@@ -2,51 +2,66 @@
 
 namespace
 {
-    constexpr int kWidth        = 420;
-    constexpr int kHeight       = 320;
-    constexpr int kPadding      = 20;
-    constexpr int kLabelH       = 18;
-    constexpr int kSliderH      = 60;
-    constexpr int kSectionGap   = 14;
+    constexpr int kW          = 480;
+    constexpr int kH          = 530;
+    constexpr int kPad        = 16;
+    constexpr int kTitleH     = 46;
+    constexpr int kKnobW      = 76;
+    constexpr int kKnobH      = 72;
+    constexpr int kLabelH     = 16;
+    constexpr int kBioH       = 28;
+    constexpr int kSecHead    = 22;
+    constexpr int kGap        = 10;
 
-    const juce::Colour kBg      { 0xff1a1a2e };
-    const juce::Colour kPanel   { 0xff16213e };
-    const juce::Colour kAccent  { 0xff0f3460 };
-    const juce::Colour kKnob    { 0xffe94560 };
-    const juce::Colour kText    { 0xffe0e0e0 };
-    const juce::Colour kSubText { 0xff888888 };
+    const juce::Colour kBg     { 0xff141420 };
+    const juce::Colour kPanel  { 0xff1e1e30 };
+    const juce::Colour kBorder { 0xff2a2a45 };
+    const juce::Colour kAccent { 0xffe94560 };
+    const juce::Colour kText   { 0xffe8e8e8 };
+    const juce::Colour kBio    { 0xff9090a8 };
+    const juce::Colour kTag    { 0xffcc3355 };
+}
+
+static void setupKnob (juce::Slider& s, juce::Label& lbl, const juce::String& name,
+                       juce::Component* parent)
+{
+    s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 16);
+    s.setColour (juce::Slider::rotarySliderFillColourId,    { 0xffe94560 });
+    s.setColour (juce::Slider::rotarySliderOutlineColourId, { 0xff2a2a45 });
+    s.setColour (juce::Slider::thumbColourId,               { 0xffe94560 });
+    s.setColour (juce::Slider::textBoxTextColourId,         { 0xffe8e8e8 });
+    s.setColour (juce::Slider::textBoxBackgroundColourId,   { 0xff1e1e30 });
+    s.setColour (juce::Slider::textBoxOutlineColourId,      juce::Colours::transparentBlack);
+    parent->addAndMakeVisible (s);
+
+    lbl.setText (name, juce::dontSendNotification);
+    lbl.setFont (juce::FontOptions (11.0f, juce::Font::plain));
+    lbl.setColour (juce::Label::textColourId, kBio);
+    lbl.setJustificationType (juce::Justification::centred);
+    parent->addAndMakeVisible (lbl);
 }
 
 //==============================================================================
 AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
-    : AudioProcessorEditor (p),
-      processor (p),
-      accelLimitAttach  (p.apvts, "accelLimit",  accelLimitSlider),
-      accelDryWetAttach (p.apvts, "accelDryWet", accelDryWetSlider)
+    : AudioProcessorEditor (p), processor (p),
+      apexLimitAttach    (p.apvts, "apexLimit",    apexLimitSlider),
+      apexDryWetAttach   (p.apvts, "apexDryWet",   apexDryWetSlider),
+      evenInputAttach    (p.apvts, "evenInput",     evenInputSlider),
+      evenHighpassAttach (p.apvts, "evenHighpass",  evenHighpassSlider),
+      evenPresenceAttach (p.apvts, "evenPresence",  evenPresenceSlider),
+      evenOutputAttach   (p.apvts, "evenOutput",    evenOutputSlider),
+      evenDryWetAttach   (p.apvts, "evenDryWet",    evenDryWetSlider)
 {
-    setSize (kWidth, kHeight);
+    setupKnob (apexLimitSlider,    apexLimitLabel,    "Limit",    this);
+    setupKnob (apexDryWetSlider,   apexDryWetLabel,   "Dry/Wet",  this);
+    setupKnob (evenInputSlider,    evenInputLabel,    "Input",    this);
+    setupKnob (evenHighpassSlider, evenHighpassLabel, "Highpass", this);
+    setupKnob (evenPresenceSlider, evenPresenceLabel, "Presence", this);
+    setupKnob (evenOutputSlider,   evenOutputLabel,   "Output",   this);
+    setupKnob (evenDryWetSlider,   evenDryWetLabel,   "Dry/Wet",  this);
 
-    auto setupSlider = [&] (juce::Slider& s, juce::Label& lbl, const juce::String& name)
-    {
-        s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-        s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 70, 20);
-        s.setColour (juce::Slider::rotarySliderFillColourId, kKnob);
-        s.setColour (juce::Slider::rotarySliderOutlineColourId, kAccent);
-        s.setColour (juce::Slider::thumbColourId, kKnob);
-        s.setColour (juce::Slider::textBoxTextColourId, kText);
-        s.setColour (juce::Slider::textBoxBackgroundColourId, kPanel);
-        s.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-        addAndMakeVisible (s);
-
-        lbl.setText (name, juce::dontSendNotification);
-        lbl.setFont (juce::Font (13.0f, juce::Font::bold));
-        lbl.setColour (juce::Label::textColourId, kText);
-        lbl.setJustificationType (juce::Justification::centred);
-        addAndMakeVisible (lbl);
-    };
-
-    setupSlider (accelLimitSlider,  accelLimitLabel,  "Limit");
-    setupSlider (accelDryWetSlider, accelDryWetLabel, "Dry / Wet");
+    setSize (kW, kH);
 }
 
 AWCascadeEditor::~AWCascadeEditor() {}
@@ -54,62 +69,87 @@ AWCascadeEditor::~AWCascadeEditor() {}
 //==============================================================================
 void AWCascadeEditor::paint (juce::Graphics& g)
 {
-    // Background
     g.fillAll (kBg);
 
-    // Title bar
-    g.setColour (kAccent);
-    g.fillRect (0, 0, kWidth, 44);
-
+    // ---- Title bar ----
+    g.setColour (kPanel);
+    g.fillRect (0, 0, kW, kTitleH);
+    g.setColour (kBorder);
+    g.drawLine (0, kTitleH, kW, kTitleH, 1.0f);
     g.setColour (kText);
-    g.setFont (juce::Font (22.0f, juce::Font::bold));
-    g.drawText ("AW Cascade", 0, 0, kWidth, 44, juce::Justification::centred);
+    g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
+    g.drawText ("AW Cascade", 0, 0, kW, kTitleH, juce::Justification::centred);
 
-    // Section header — Acceleration2
-    const int sec1Y = 56;
-    g.setColour (kPanel);
-    g.fillRoundedRectangle (kPadding, sec1Y, kWidth - kPadding * 2, kSliderH + kLabelH * 2 + 10, 6.0f);
-    g.setColour (kKnob);
-    g.setFont (juce::Font (11.0f, juce::Font::bold));
-    g.drawText ("ACCELERATION2", kPadding + 8, sec1Y + 4, 140, 14, juce::Justification::left);
+    int y = kTitleH + kGap;
 
-    // Section header — Spiral
-    const int sec2Y = sec1Y + kSliderH + kLabelH * 2 + 10 + kSectionGap;
-    g.setColour (kPanel);
-    g.fillRoundedRectangle (kPadding, sec2Y, kWidth - kPadding * 2, 48, 6.0f);
-    g.setColour (kKnob);
-    g.setFont (juce::Font (11.0f, juce::Font::bold));
-    g.drawText ("SPIRAL", kPadding + 8, sec2Y + 8, 80, 14, juce::Justification::left);
-    g.setColour (kSubText);
-    g.setFont (juce::Font (12.0f));
-    g.drawText ("sin(x\xc2\xb7|x|)/|x|  \xe2\x80\x94  warm saturation (no params)",
-                kPadding + 8, sec2Y + 24, kWidth - kPadding * 2 - 16, 16,
-                juce::Justification::left);
+    auto drawSection = [&] (const juce::String& tag, const juce::String& bio, int h)
+    {
+        g.setColour (kPanel);
+        g.fillRoundedRectangle (kPad, y, kW - kPad*2, h, 6.0f);
+        g.setColour (kBorder);
+        g.drawRoundedRectangle (kPad, y, kW - kPad*2, h, 6.0f, 1.0f);
 
-    // Section header — ClipSoftly
-    const int sec3Y = sec2Y + 48 + kSectionGap;
-    g.setColour (kPanel);
-    g.fillRoundedRectangle (kPadding, sec3Y, kWidth - kPadding * 2, 48, 6.0f);
-    g.setColour (kKnob);
-    g.setFont (juce::Font (11.0f, juce::Font::bold));
-    g.drawText ("CLIPSOFTLY", kPadding + 8, sec3Y + 8, 100, 14, juce::Justification::left);
-    g.setColour (kSubText);
-    g.setFont (juce::Font (12.0f));
-    g.drawText ("sin-based soft clip with adaptive speed blend (no params)",
-                kPadding + 8, sec3Y + 24, kWidth - kPadding * 2 - 16, 16,
-                juce::Justification::left);
+        // Tag badge
+        int tagW = g.getCurrentFont().getStringWidth (tag) + 20;
+        g.setFont (juce::FontOptions (10.0f, juce::Font::bold));
+        tagW = g.getCurrentFont().getStringWidth (tag) + 16;
+        g.setColour (kTag);
+        g.fillRoundedRectangle (kPad + 10, y + 8, tagW, 16, 3.0f);
+        g.setColour (juce::Colours::white);
+        g.drawText (tag, kPad + 10, y + 8, tagW, 16, juce::Justification::centred);
+
+        // Bio text
+        g.setFont (juce::FontOptions (11.5f));
+        g.setColour (kBio);
+        g.drawText (bio, kPad + 14, y + 28, kW - kPad*2 - 28, kBioH,
+                    juce::Justification::centredLeft, true);
+    };
+
+    // Apex Limiter section
+    int apexH = kBioH + kSecHead + kKnobH + kLabelH + 20;
+    drawSection ("APEX LIMITER", "Detects acceleration in the waveform and smooths only the sharpest transient edges.", apexH);
+    y += apexH + kGap;
+
+    // Even Drive section
+    int evenH = kBioH + kSecHead + kKnobH + kLabelH + 20;
+    drawSection ("EVEN DRIVE", "Warm harmonic saturation with drive, highpass filter, presence, output level and dry/wet control.", evenH);
+    y += evenH + kGap;
+
+    // Velvet Clip section
+    int clipH = kBioH + kSecHead + 14;
+    drawSection ("VELVET CLIP", "Transparent soft ceiling — catches output peaks with a smooth sin-shaped curve.", clipH);
 }
 
 void AWCascadeEditor::resized()
 {
-    const int sec1Y   = 56;
-    const int innerY  = sec1Y + 20;
-    const int halfW   = (kWidth - kPadding * 2) / 2;
+    int y = kTitleH + kGap;
 
-    // Acceleration2 — two rotary knobs side by side
-    accelLimitLabel.setBounds  (kPadding,          innerY, halfW, kLabelH);
-    accelLimitSlider.setBounds (kPadding,          innerY + kLabelH, halfW, kSliderH);
+    // ---- Apex Limiter knobs ----
+    int apexH    = kBioH + kSecHead + kKnobH + kLabelH + 20;
+    int knobY    = y + kSecHead + kBioH + 4;
+    int halfW    = (kW - kPad*2) / 2;
 
-    accelDryWetLabel.setBounds (kPadding + halfW,  innerY, halfW, kLabelH);
-    accelDryWetSlider.setBounds(kPadding + halfW,  innerY + kLabelH, halfW, kSliderH);
+    apexLimitLabel .setBounds (kPad,          knobY,          halfW, kLabelH);
+    apexLimitSlider.setBounds (kPad,          knobY + kLabelH, halfW, kKnobH);
+    apexDryWetLabel .setBounds(kPad + halfW,  knobY,          halfW, kLabelH);
+    apexDryWetSlider.setBounds(kPad + halfW,  knobY + kLabelH, halfW, kKnobH);
+    y += apexH + kGap;
+
+    // ---- Even Drive knobs ----
+    int evenH  = kBioH + kSecHead + kKnobH + kLabelH + 20;
+    knobY      = y + kSecHead + kBioH + 4;
+    int inner  = kW - kPad*2;
+    int slot   = inner / 5;
+
+    auto placeKnob = [&] (juce::Label& lbl, juce::Slider& sl, int idx)
+    {
+        int x = kPad + idx * slot;
+        lbl.setBounds (x, knobY,          slot, kLabelH);
+        sl .setBounds (x, knobY + kLabelH, slot, kKnobH);
+    };
+    placeKnob (evenInputLabel,    evenInputSlider,    0);
+    placeKnob (evenHighpassLabel, evenHighpassSlider, 1);
+    placeKnob (evenPresenceLabel, evenPresenceSlider, 2);
+    placeKnob (evenOutputLabel,   evenOutputSlider,   3);
+    placeKnob (evenDryWetLabel,   evenDryWetSlider,   4);
 }
