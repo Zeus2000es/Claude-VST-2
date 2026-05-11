@@ -293,8 +293,11 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_spi * 1.18e-17;
             const double drySpiL = sampleL, drySpiR = sampleR;
 
-            sampleL*=spiGain; sampleR*=spiGain;
-            prevSampleL_spi*=spiGain; prevSampleR_spi*=spiGain;
+            // driveScale keeps the sin(x*|x|)/|x| nonlinearity in its musical range
+            // regardless of input gain. Compensated after saturation so 0dB = transparent.
+            const double driveScale = 0.25;
+            sampleL *= spiGain * driveScale; sampleR *= spiGain * driveScale;
+            prevSampleL_spi *= spiGain * driveScale; prevSampleR_spi *= spiGain * driveScale;
             if (flip_spi) {
                 iirSampleAL=(iirSampleAL*(1.0-spiIir))+(sampleL*spiIir); sampleL-=iirSampleAL;
                 iirSampleAR=(iirSampleAR*(1.0-spiIir))+(sampleR*spiIir); sampleR-=iirSampleAR;
@@ -306,6 +309,9 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             double pR=std::sin(sampleR*std::fabs(prevSampleR_spi))/(prevSampleR_spi==0.0?1.0:std::fabs(prevSampleR_spi));
             sampleL=std::sin(sampleL*std::fabs(sampleL))/(std::fabs(sampleL)==0.0?1.0:std::fabs(sampleL));
             sampleR=std::sin(sampleR*std::fabs(sampleR))/(std::fabs(sampleR)==0.0?1.0:std::fabs(sampleR));
+            // compensate driveScale so output level matches expectation
+            sampleL /= driveScale; sampleR /= driveScale;
+            pL /= driveScale; pR /= driveScale;
             sampleL*=spiOutput; sampleR*=spiOutput; pL*=spiOutput; pR*=spiOutput;
             if (spiPresence>0.0) { sampleL=(sampleL*(1.0-spiPresence))+(pL*spiPresence);
                                     sampleR=(sampleR*(1.0-spiPresence))+(pR*spiPresence); }
