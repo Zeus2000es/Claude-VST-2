@@ -110,7 +110,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
             return juce::jlimit (0.0f, 1.0f, s.getFloatValue() / 100.0f);
         })));
 
-    layout.add (std::make_unique<PB> (PID ("bypassEven", 1), "Bypass Even", false));
+    layout.add (std::make_unique<PB> (PID ("bypassEven",   1), "Bypass Even",   false));
+    layout.add (std::make_unique<PB> (PID ("doubleEffect", 1), "Double Effect", false));
 
     // ---- Velvet Clip ----
     layout.add (std::make_unique<PF> (
@@ -194,7 +195,8 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
 
     const bool doSwap       = apvts.getRawParameterValue ("swapOrder")->load()    > 0.5f;
     const bool bypassApex   = apvts.getRawParameterValue ("bypassApex")->load()   > 0.5f;
-    const bool bypassEven   = apvts.getRawParameterValue ("bypassEven")->load()   > 0.5f;
+    const bool bypassEven    = apvts.getRawParameterValue ("bypassEven")->load()    > 0.5f;
+    const bool doubleEffect  = apvts.getRawParameterValue ("doubleEffect")->load() > 0.5f;
     const bool bypassVelvet = apvts.getRawParameterValue ("bypassVelvet")->load() > 0.5f;
 
     // ---- Apex Limiter per-block setup ----
@@ -312,6 +314,22 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             // compensate driveScale so output level matches expectation
             sampleL /= driveScale; sampleR /= driveScale;
             pL /= driveScale; pR /= driveScale;
+
+            // Double effect: second pass through same nonlinearity — more harmonics, same level
+            if (doubleEffect)
+            {
+                sampleL *= driveScale; sampleR *= driveScale;
+                sampleL = std::sin(sampleL*std::fabs(sampleL))/(std::fabs(sampleL)==0.0?1.0:std::fabs(sampleL));
+                sampleR = std::sin(sampleR*std::fabs(sampleR))/(std::fabs(sampleR)==0.0?1.0:std::fabs(sampleR));
+                sampleL /= driveScale; sampleR /= driveScale;
+                pL *= driveScale;
+                pL = std::sin(pL*std::fabs(pL))/(std::fabs(pL)==0.0?1.0:std::fabs(pL));
+                pL /= driveScale;
+                pR *= driveScale;
+                pR = std::sin(pR*std::fabs(pR))/(std::fabs(pR)==0.0?1.0:std::fabs(pR));
+                pR /= driveScale;
+            }
+
             sampleL*=spiOutput; sampleR*=spiOutput; pL*=spiOutput; pR*=spiOutput;
             if (spiPresence>0.0) { sampleL=(sampleL*(1.0-spiPresence))+(pL*spiPresence);
                                     sampleR=(sampleR*(1.0-spiPresence))+(pR*spiPresence); }
@@ -389,6 +407,11 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             lastSampleR_cs=intermediateR[0];
             fpdL_cs^=fpdL_cs<<13; fpdL_cs^=fpdL_cs>>17; fpdL_cs^=fpdL_cs<<5;
             fpdR_cs^=fpdR_cs<<13; fpdR_cs^=fpdR_cs>>17; fpdR_cs^=fpdR_cs<<5;
+            // Hard safety clip: soft algo can overshoot on sharp transients
+            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
+            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
+            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
+            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
         }
 
         inL[i] = (float) sampleL;

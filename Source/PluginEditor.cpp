@@ -69,6 +69,7 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       evenOutputAttach   (p.apvts, "evenOutput",      evenOutputSlider),
       evenDryWetAttach   (p.apvts, "evenDryWet",      evenDryWetSlider),
       evenBypassAttach   (p.apvts, "bypassEven",      evenBypassButton),
+      doubleAttach       (p.apvts, "doubleEffect",    doubleButton),
       velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
       swapAttach         (p.apvts, "swapOrder",       swapButton),
@@ -95,6 +96,18 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
         evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON"); };
     velvetBypassButton.onClick = [this] {
         velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON"); };
+
+    // Double effect button
+    doubleButton.setClickingTogglesState (true);
+    doubleButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
+    doubleButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff4a1a00));
+    doubleButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff886644));
+    doubleButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffff9922));
+    const bool initDouble = p.apvts.getRawParameterValue ("doubleEffect")->load() > 0.5f;
+    doubleButton.setButtonText (initDouble ? "x2 ON" : "x2");
+    doubleButton.onClick = [this] {
+        doubleButton.setButtonText (doubleButton.getToggleState() ? "x2 ON" : "x2"); };
+    addAndMakeVisible (doubleButton);
 
     // Velvet ceiling slider (horizontal)
     velvetCeilingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
@@ -156,6 +169,7 @@ void AWCascadeEditor::timerCallback()
     apexBypassButton.setButtonText   (apexBypassButton.getToggleState()   ? "BYPASS" : "ON");
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
+    doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
@@ -332,12 +346,14 @@ void AWCascadeEditor::resized()
         placeApexKnobs (y1 + relY);
         apexBypassButton.setBounds (bypassX, y1 + 5, 60, 16);
         placeEvenKnobs (y2 + relY);
-        evenBypassButton.setBounds (bypassX, y2 + 5, 60, 16);
+        evenBypassButton.setBounds (bypassX,      y2 + 5, 60, 16);
+        doubleButton    .setBounds (bypassX - 46, y2 + 5, 42, 16);
     }
     else
     {
         placeEvenKnobs (y1 + relY);
-        evenBypassButton.setBounds (bypassX, y1 + 5, 60, 16);
+        evenBypassButton.setBounds (bypassX,      y1 + 5, 60, 16);
+        doubleButton    .setBounds (bypassX - 46, y1 + 5, 42, 16);
         placeApexKnobs (y2 + relY);
         apexBypassButton.setBounds (bypassX, y2 + 5, 60, 16);
     }

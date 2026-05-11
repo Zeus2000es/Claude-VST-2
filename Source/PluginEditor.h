@@ -34,6 +34,8 @@ private:
         evenOutputAttach, evenDryWetAttach;
     juce::TextButton evenBypassButton;
     juce::AudioProcessorValueTreeState::ButtonAttachment evenBypassAttach;
+    juce::TextButton doubleButton;
+    juce::AudioProcessorValueTreeState::ButtonAttachment doubleAttach;
 
     // Velvet Clip
     juce::Slider     velvetCeilingSlider;
