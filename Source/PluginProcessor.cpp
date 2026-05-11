@@ -47,14 +47,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
 
     // ---- Even Drive ----
     layout.add (std::make_unique<PF> (
-        PID ("evenInput", 1), "Drive Input", NR (-24.0f, 24.0f, 0.1f), 0.0f,
+        PID ("evenInput", 1), "Drive Input", NR (-12.0f, 12.0f, 0.1f), 0.0f,
         Attr()
         .withStringFromValueFunction ([] (float v, int) -> juce::String {
             if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
             return juce::String (v, 1) + " dB";
         })
         .withValueFromStringFunction ([] (const juce::String& s) -> float {
-            return juce::jlimit (-24.0f, 24.0f, s.getFloatValue());
+            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
@@ -89,14 +89,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
         })));
 
     layout.add (std::make_unique<PF> (
-        PID ("evenOutput", 1), "Drive Output", NR (-24.0f, 24.0f, 0.1f), 0.0f,
+        PID ("evenOutput", 1), "Drive Output", NR (-12.0f, 12.0f, 0.1f), 0.0f,
         Attr()
         .withStringFromValueFunction ([] (float v, int) -> juce::String {
             if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
             return juce::String (v, 1) + " dB";
         })
         .withValueFromStringFunction ([] (const juce::String& s) -> float {
-            return juce::jlimit (-24.0f, 24.0f, s.getFloatValue());
+            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
@@ -221,9 +221,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
     }
 
     // ---- Even Drive per-block setup ----
-    // Input uses half-dB sensitivity: +24 dB displayed = +12 dB actual into saturation.
-    // Spiral2's sin(x·|x|)/|x| nonlinearity works musically up to ~4x gain; beyond that it folds harshly.
-    const double spiGain     = std::pow (10.0, (double) apvts.getRawParameterValue ("evenInput")   ->load() / 40.0);
+    const double spiGain     = std::pow (10.0, (double) apvts.getRawParameterValue ("evenInput")   ->load() / 20.0);
     const double spiIir      = std::pow ((double) apvts.getRawParameterValue ("evenHighpass")->load(), 3.0) / overallscale;
     const double spiPresence = (double) apvts.getRawParameterValue ("evenPresence")->load();
     const double spiOutput   = std::pow (10.0, (double) apvts.getRawParameterValue ("evenOutput")  ->load() / 20.0);
