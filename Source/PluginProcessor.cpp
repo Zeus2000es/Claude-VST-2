@@ -221,7 +221,9 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
     }
 
     // ---- Even Drive per-block setup ----
-    const double spiGain     = std::pow (10.0, (double) apvts.getRawParameterValue ("evenInput")   ->load() / 20.0);
+    // Input uses half-dB sensitivity: +24 dB displayed = +12 dB actual into saturation.
+    // Spiral2's sin(x·|x|)/|x| nonlinearity works musically up to ~4x gain; beyond that it folds harshly.
+    const double spiGain     = std::pow (10.0, (double) apvts.getRawParameterValue ("evenInput")   ->load() / 40.0);
     const double spiIir      = std::pow ((double) apvts.getRawParameterValue ("evenHighpass")->load(), 3.0) / overallscale;
     const double spiPresence = (double) apvts.getRawParameterValue ("evenPresence")->load();
     const double spiOutput   = std::pow (10.0, (double) apvts.getRawParameterValue ("evenOutput")  ->load() / 20.0);
