@@ -3,7 +3,7 @@
 namespace
 {
     constexpr int kW          = 480;
-    constexpr int kH          = 530;
+    constexpr int kH          = 548;
     constexpr int kPad        = 16;
     constexpr int kTitleH     = 46;
     constexpr int kKnobW      = 76;
@@ -78,7 +78,7 @@ void AWCascadeEditor::paint (juce::Graphics& g)
     g.drawLine (0, kTitleH, kW, kTitleH, 1.0f);
     g.setColour (kText);
     g.setFont (juce::FontOptions (20.0f, juce::Font::bold));
-    g.drawText ("AW Cascade", 0, 0, kW, kTitleH, juce::Justification::centred);
+    g.drawText ("The Press", 0, 0, kW, kTitleH, juce::Justification::centred);
 
     int y = kTitleH + kGap;
 
@@ -107,17 +107,22 @@ void AWCascadeEditor::paint (juce::Graphics& g)
 
     // Apex Limiter section
     int apexH = kBioH + kSecHead + kKnobH + kLabelH + 20;
-    drawSection ("APEX LIMITER", "Detects acceleration in the waveform and smooths only the sharpest transient edges.", apexH);
+    drawSection ("APEX LIMITER", "Tracks waveform velocity and softens only the sharpest transient edges.", apexH);
     y += apexH + kGap;
 
     // Even Drive section
     int evenH = kBioH + kSecHead + kKnobH + kLabelH + 20;
-    drawSection ("EVEN DRIVE", "Warm harmonic saturation with drive, highpass filter, presence, output level and dry/wet control.", evenH);
+    drawSection ("EVEN DRIVE", "Generates even-order harmonics, analogue weight, and leaves transients untouched.", evenH);
     y += evenH + kGap;
 
     // Velvet Clip section
     int clipH = kBioH + kSecHead + 14;
-    drawSection ("VELVET CLIP", "Transparent soft ceiling — catches output peaks with a smooth sin-shaped curve.", clipH);
+    drawSection ("VELVET CLIP", "Transparent soft ceiling \xe2\x80\x94 Catches output peaks smoothly.", clipH);
+
+    // Footer
+    g.setFont (juce::FontOptions (10.5f));
+    g.setColour (kBio);
+    g.drawText ("Made by Zeus", 0, kH - 18, kW, 16, juce::Justification::centred);
 }
 
 void AWCascadeEditor::resized()
