@@ -3,9 +3,9 @@
 namespace
 {
     constexpr int kW      = 480;
-    constexpr int kH      = 562;
+    constexpr int kH      = 578;
     constexpr int kPad    = 16;
-    constexpr int kTitleH = 46;
+    constexpr int kTitleH = 58;
     constexpr int kKnobH  = 72;
     constexpr int kLabelH = 16;
     constexpr int kBioH   = 26;
@@ -206,7 +206,7 @@ void AWCascadeEditor::paint (juce::Graphics& g)
     g.fillRect (0, kTitleH - 2, kW, 2);
     g.setColour (kText);
     g.setFont (juce::FontOptions (22.0f, juce::Font::bold));
-    g.drawText ("The Press", 0, 0, kW, kTitleH - 14, juce::Justification::centred);
+    g.drawText ("The Press", 0, 4, kW, 26, juce::Justification::centred);
 
     // ---- Meters ----
     auto drawMeter = [&] (float level, int x, int y, int maxW, int h)
@@ -230,18 +230,20 @@ void AWCascadeEditor::paint (juce::Graphics& g)
     const int mW  = kW / 2 - kPad - 10;
     const int mXi = kPad + 4;
     const int mXo = kW / 2 + 6;
-    const int mY1 = kTitleH - 12;
-    const int mY2 = kTitleH - 7;
+    // Labels sit below the title text, bars below the labels
+    const int mLabelY = 34;
+    const int mY1     = 44;
+    const int mY2     = 50;
+
+    g.setFont (juce::FontOptions (8.0f));
+    g.setColour (juce::Colour (0xff883333));
+    g.drawText ("IN",  mXi, mLabelY, 20, 8, juce::Justification::left);
+    g.drawText ("OUT", mXo, mLabelY, 24, 8, juce::Justification::left);
 
     drawMeter (dispInL,  mXi, mY1, mW, 4);
     drawMeter (dispInR,  mXi, mY2, mW, 4);
     drawMeter (dispOutL, mXo, mY1, mW, 4);
     drawMeter (dispOutR, mXo, mY2, mW, 4);
-
-    g.setFont (juce::FontOptions (8.0f));
-    g.setColour (juce::Colour (0xff883333));
-    g.drawText ("IN",  mXi, mY1 - 9, 20, 8, juce::Justification::left);
-    g.drawText ("OUT", mXo, mY1 - 9, 24, 8, juce::Justification::left);
 
     // ---- Section panels ----
     const bool swapped = swapButton.getToggleState();

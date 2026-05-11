@@ -24,57 +24,90 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
     // ---- Apex Limiter ----
     layout.add (std::make_unique<PF> (
         PID ("apexLimit", 1), "Apex Limit", NR (0.0f, 1.0f, 0.001f), 0.32f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
             return juce::String ((int)(v * 100.0f)) + "%";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            return juce::jlimit (0.0f, 1.0f, s.getFloatValue() / 100.0f);
         })));
 
     layout.add (std::make_unique<PF> (
         PID ("apexDryWet", 1), "Apex Dry/Wet", NR (0.0f, 1.0f, 0.001f), 1.0f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
             int w = juce::roundToInt (v * 100.0f);
             return juce::String (w) + "W/" + juce::String (100 - w) + "D";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            return juce::jlimit (0.0f, 1.0f, s.getFloatValue() / 100.0f);
         })));
 
     layout.add (std::make_unique<PB> (PID ("bypassApex", 1), "Bypass Apex", false));
 
     // ---- Even Drive ----
     layout.add (std::make_unique<PF> (
-        PID ("evenInput", 1), "Drive Input", NR (0.0f, 1.0f, 0.001f), 0.5f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
-            const float g = std::pow (v * 2.0f, 2.0f);
-            if (g < 1e-4f) return "-inf dB";
-            return juce::String (20.0f * std::log10 (g), 1) + " dB";
+        PID ("evenInput", 1), "Drive Input", NR (-12.0f, 12.0f, 0.1f), 0.0f,
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
+            if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
+            return juce::String (v, 1) + " dB";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
         PID ("evenHighpass", 1), "Drive Highpass", NR (0.0f, 1.0f, 0.001f), 0.0f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
             const float fc = std::pow (v, 3.0f) * (44100.0f / (2.0f * juce::MathConstants<float>::pi));
             if (fc < 1.0f) return juce::String ("Off");
             if (fc < 1000.0f) return juce::String ((int) fc) + " Hz";
-            return juce::String (fc / 1000.0f, 1) + " kHz";
+            return juce::String (fc / 1000.0f, 2) + " kHz";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            const juce::String t = s.trim();
+            if (t.equalsIgnoreCase ("Off") || t.equalsIgnoreCase ("0")) return 0.0f;
+            float hz = t.containsIgnoreCase ("k") ? t.getFloatValue() * 1000.0f
+                                                   : t.getFloatValue();
+            if (hz < 1.0f) return 0.0f;
+            return juce::jlimit (0.0f, 1.0f,
+                std::cbrt (hz * 2.0f * juce::MathConstants<float>::pi / 44100.0f));
         })));
 
     layout.add (std::make_unique<PF> (
-        PID ("evenPresence", 1), "Drive Presence", NR (0.0f, 1.0f, 0.001f), 0.5f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
-            const float val = (v - 0.5f) * 12.0f;
-            if (val >= 0.0f) return "+" + juce::String (val, 1);
-            return juce::String (val, 1);
+        PID ("evenPresence", 1), "Drive Presence", NR (0.0f, 1.0f, 0.001f), 0.0f,
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
+            if (v < 0.001f) return "Off";
+            return juce::String ((int)(v * 100.0f)) + "%";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            if (s.trim().equalsIgnoreCase ("Off")) return 0.0f;
+            return juce::jlimit (0.0f, 1.0f, s.getFloatValue() / 100.0f);
         })));
 
     layout.add (std::make_unique<PF> (
-        PID ("evenOutput", 1), "Drive Output", NR (0.0f, 1.0f, 0.001f), 1.0f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
-            if (v < 0.001f) return "-inf dB";
-            return juce::String (20.0f * std::log10 (v), 1) + " dB";
+        PID ("evenOutput", 1), "Drive Output", NR (-12.0f, 12.0f, 0.1f), 0.0f,
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
+            if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
+            return juce::String (v, 1) + " dB";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
         PID ("evenDryWet", 1), "Drive Dry/Wet", NR (0.0f, 1.0f, 0.001f), 1.0f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
+        Attr()
+        .withStringFromValueFunction ([] (float v, int) -> juce::String {
             int w = juce::roundToInt (v * 100.0f);
             return juce::String (w) + "W/" + juce::String (100 - w) + "D";
+        })
+        .withValueFromStringFunction ([] (const juce::String& s) -> float {
+            return juce::jlimit (0.0f, 1.0f, s.getFloatValue() / 100.0f);
         })));
 
     layout.add (std::make_unique<PB> (PID ("bypassEven", 1), "Bypass Even", false));
@@ -188,10 +221,10 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
     }
 
     // ---- Even Drive per-block setup ----
-    const double spiGain     = std::pow ((double) apvts.getRawParameterValue ("evenInput")   ->load() * 2.0, 2.0);
+    const double spiGain     = std::pow (10.0, (double) apvts.getRawParameterValue ("evenInput")   ->load() / 20.0);
     const double spiIir      = std::pow ((double) apvts.getRawParameterValue ("evenHighpass")->load(), 3.0) / overallscale;
     const double spiPresence = (double) apvts.getRawParameterValue ("evenPresence")->load();
-    const double spiOutput   = (double) apvts.getRawParameterValue ("evenOutput")  ->load();
+    const double spiOutput   = std::pow (10.0, (double) apvts.getRawParameterValue ("evenOutput")  ->load() / 20.0);
     const double spiWet      = (double) apvts.getRawParameterValue ("evenDryWet")  ->load();
 
     // ---- Velvet Clip per-block setup ----
@@ -260,8 +293,8 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_spi * 1.18e-17;
             const double drySpiL = sampleL, drySpiR = sampleR;
 
-            if (spiGain != 1.0) { sampleL*=spiGain; sampleR*=spiGain;
-                                   prevSampleL_spi*=spiGain; prevSampleR_spi*=spiGain; }
+            sampleL*=spiGain; sampleR*=spiGain;
+            prevSampleL_spi*=spiGain; prevSampleR_spi*=spiGain;
             if (flip_spi) {
                 iirSampleAL=(iirSampleAL*(1.0-spiIir))+(sampleL*spiIir); sampleL-=iirSampleAL;
                 iirSampleAR=(iirSampleAR*(1.0-spiIir))+(sampleR*spiIir); sampleR-=iirSampleAR;
@@ -273,7 +306,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             double pR=std::sin(sampleR*std::fabs(prevSampleR_spi))/(prevSampleR_spi==0.0?1.0:std::fabs(prevSampleR_spi));
             sampleL=std::sin(sampleL*std::fabs(sampleL))/(std::fabs(sampleL)==0.0?1.0:std::fabs(sampleL));
             sampleR=std::sin(sampleR*std::fabs(sampleR))/(std::fabs(sampleR)==0.0?1.0:std::fabs(sampleR));
-            if (spiOutput<1.0) { sampleL*=spiOutput; sampleR*=spiOutput; pL*=spiOutput; pR*=spiOutput; }
+            sampleL*=spiOutput; sampleR*=spiOutput; pL*=spiOutput; pR*=spiOutput;
             if (spiPresence>0.0) { sampleL=(sampleL*(1.0-spiPresence))+(pL*spiPresence);
                                     sampleR=(sampleR*(1.0-spiPresence))+(pR*spiPresence); }
             if (spiWet<1.0) { sampleL=(drySpiL*(1.0-spiWet))+(sampleL*spiWet);
