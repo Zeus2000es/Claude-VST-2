@@ -47,14 +47,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
 
     // ---- Even Drive ----
     layout.add (std::make_unique<PF> (
-        PID ("evenInput", 1), "Drive Input", NR (-12.0f, 12.0f, 0.1f), 0.0f,
+        PID ("evenInput", 1), "Drive Input", NR (-24.0f, 24.0f, 0.1f), 0.0f,
         Attr()
         .withStringFromValueFunction ([] (float v, int) -> juce::String {
             if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
             return juce::String (v, 1) + " dB";
         })
         .withValueFromStringFunction ([] (const juce::String& s) -> float {
-            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
+            return juce::jlimit (-24.0f, 24.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
@@ -89,14 +89,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
         })));
 
     layout.add (std::make_unique<PF> (
-        PID ("evenOutput", 1), "Drive Output", NR (-12.0f, 12.0f, 0.1f), 0.0f,
+        PID ("evenOutput", 1), "Drive Output", NR (-24.0f, 24.0f, 0.1f), 0.0f,
         Attr()
         .withStringFromValueFunction ([] (float v, int) -> juce::String {
             if (v >= 0.0f) return "+" + juce::String (v, 1) + " dB";
             return juce::String (v, 1) + " dB";
         })
         .withValueFromStringFunction ([] (const juce::String& s) -> float {
-            return juce::jlimit (-12.0f, 12.0f, s.getFloatValue());
+            return juce::jlimit (-24.0f, 24.0f, s.getFloatValue());
         })));
 
     layout.add (std::make_unique<PF> (
