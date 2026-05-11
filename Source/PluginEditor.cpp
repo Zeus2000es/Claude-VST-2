@@ -27,11 +27,11 @@ static void setupKnob (juce::Slider& s, juce::Label& lbl, const juce::String& na
 {
     s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 16);
-    s.setColour (juce::Slider::rotarySliderFillColourId,    { 0xffe94560 });
-    s.setColour (juce::Slider::rotarySliderOutlineColourId, { 0xff2a2a45 });
-    s.setColour (juce::Slider::thumbColourId,               { 0xffe94560 });
-    s.setColour (juce::Slider::textBoxTextColourId,         { 0xffe8e8e8 });
-    s.setColour (juce::Slider::textBoxBackgroundColourId,   { 0xff1e1e30 });
+    s.setColour (juce::Slider::rotarySliderFillColourId,    juce::Colour (0xffe94560));
+    s.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff2a2a45));
+    s.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffe94560));
+    s.setColour (juce::Slider::textBoxTextColourId,         juce::Colour (0xffe8e8e8));
+    s.setColour (juce::Slider::textBoxBackgroundColourId,   juce::Colour (0xff1e1e30));
     s.setColour (juce::Slider::textBoxOutlineColourId,      juce::Colours::transparentBlack);
     parent->addAndMakeVisible (s);
 
