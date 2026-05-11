@@ -121,6 +121,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
         })));
 
     layout.add (std::make_unique<PB> (PID ("bypassVelvet", 1), "Bypass Velvet", false));
+    layout.add (std::make_unique<PB> (PID ("hardClip",    1), "Hard Clip",     true));
 
     // ---- Swap order ----
     layout.add (std::make_unique<PB> (PID ("swapOrder", 1), "Swap Order", false));
@@ -198,6 +199,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
     const bool bypassEven    = apvts.getRawParameterValue ("bypassEven")->load()    > 0.5f;
     const bool doubleEffect  = apvts.getRawParameterValue ("doubleEffect")->load() > 0.5f;
     const bool bypassVelvet = apvts.getRawParameterValue ("bypassVelvet")->load() > 0.5f;
+    const bool hardClip     = apvts.getRawParameterValue ("hardClip")->load()     > 0.5f;
 
     // ---- Apex Limiter per-block setup ----
     const double A         = (double) apvts.getRawParameterValue ("apexLimit") ->load();
@@ -407,11 +409,14 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             lastSampleR_cs=intermediateR[0];
             fpdL_cs^=fpdL_cs<<13; fpdL_cs^=fpdL_cs>>17; fpdL_cs^=fpdL_cs<<5;
             fpdR_cs^=fpdR_cs<<13; fpdR_cs^=fpdR_cs>>17; fpdR_cs^=fpdR_cs<<5;
-            // Hard safety clip: soft algo can overshoot on sharp transients
-            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
-            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
-            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
-            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
+            // Hard clip safety net (toggleable)
+            if (hardClip)
+            {
+                if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
+                if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
+                if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
+                if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
+            }
         }
 
         inL[i] = (float) sampleL;
