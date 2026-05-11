@@ -72,6 +72,7 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       doubleAttach       (p.apvts, "doubleEffect",    doubleButton),
       velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
+      hardClipAttach     (p.apvts, "hardClip",        hardClipButton),
       swapAttach         (p.apvts, "swapOrder",       swapButton),
       oversampleAttach   (p.apvts, "oversample",      oversampleBox)
 {
@@ -96,6 +97,18 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
         evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON"); };
     velvetBypassButton.onClick = [this] {
         velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON"); };
+
+    // Hard clip button (default ON)
+    hardClipButton.setClickingTogglesState (true);
+    hardClipButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
+    hardClipButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff1a0000));
+    hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff664444));
+    hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff44bb44));
+    const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
+    hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
+    hardClipButton.onClick = [this] {
+        hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF"); };
+    addAndMakeVisible (hardClipButton);
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
@@ -170,6 +183,7 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
+    hardClipButton.setButtonText     (hardClipButton.getToggleState()     ? "HARD ON" : "HARD OFF");
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
@@ -359,7 +373,8 @@ void AWCascadeEditor::resized()
     }
 
     // Velvet section
-    velvetBypassButton.setBounds (bypassX, yClip + 5, 60, 16);
+    velvetBypassButton.setBounds (bypassX,      yClip + 5, 60, 16);
+    hardClipButton    .setBounds (bypassX - 72, yClip + 5, 68, 16);
     const int ceilX = kPad + 10;
     const int ceilY = yClip + kSecHd + kBioH + 6;
     velvetCeilingLabel.setBounds  (ceilX, ceilY, 52, 16);
