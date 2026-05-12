@@ -1,5 +1,142 @@
 #include "PluginEditor.h"
 
+//==============================================================================
+class ThePressLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
+                           float pos, float startA, float endA, juce::Slider&) override
+    {
+        using namespace juce;
+        const float cx    = x + width  * 0.5f;
+        const float cy    = y + height * 0.5f;
+        const float outer = jmin (width, height) * 0.43f;
+        const float kr    = outer * 0.68f;
+        const float angle = startA + pos * (endA - startA);
+        const float tW    = outer * 0.10f;
+        const float arcR  = outer - tW;
+
+        // Track arc
+        {
+            Path p;
+            p.addArc (cx - arcR, cy - arcR, arcR*2, arcR*2, startA, endA, true);
+            g.setColour (Colour (0xffd2d6dd));
+            g.strokePath (p, PathStrokeType (tW, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+
+        // Drop shadow
+        {
+            ColourGradient sh (Colour (0x30000000), cx, cy + kr * 0.15f,
+                               Colour (0x00000000), cx, cy + kr * 1.5f, true);
+            g.setGradientFill (sh);
+            g.fillEllipse (cx - kr * 1.1f, cy - kr * 0.85f + 3.0f, kr * 2.2f, kr * 2.2f);
+        }
+
+        // Knob body — brushed aluminium
+        {
+            ColourGradient grad (
+                Colour (0xfff2f4f7), cx - kr * 0.30f, cy - kr * 0.42f,
+                Colour (0xff8a9099), cx + kr * 0.22f, cy + kr * 0.48f,
+                false);
+            grad.addColour (0.38f, Colour (0xffdce0e6));
+            grad.addColour (0.70f, Colour (0xffb0b8c2));
+            g.setGradientFill (grad);
+            g.fillEllipse (cx - kr, cy - kr, kr * 2, kr * 2);
+        }
+
+        // Specular highlight top-left
+        {
+            ColourGradient sp (
+                Colour (0x88ffffff), cx - kr * 0.22f, cy - kr * 0.54f,
+                Colour (0x00ffffff), cx + kr * 0.14f, cy + kr * 0.06f,
+                false);
+            g.setGradientFill (sp);
+            g.fillEllipse (cx - kr * 0.82f, cy - kr * 0.82f, kr * 1.35f, kr * 1.06f);
+        }
+
+        // Outer ring (dark)
+        g.setColour (Colour (0xff6c7480));
+        g.drawEllipse (cx - kr, cy - kr, kr * 2, kr * 2, 0.9f);
+
+        // Inner ring (bright, subtle top highlight)
+        g.setColour (Colour (0x22ffffff));
+        g.drawEllipse (cx - kr + 0.7f, cy - kr + 0.7f, kr * 2 - 1.4f, kr * 2 - 1.4f, 0.5f);
+
+        // Indicator line + dot
+        {
+            const float a  = angle - MathConstants<float>::halfPi;
+            const float cA = std::cos (a), sA = std::sin (a);
+            const float i1 = kr * 0.24f, i2 = kr * 0.75f;
+            g.setColour (Colour (0xffcc2200));
+            g.drawLine (cx + cA*i1, cy + sA*i1, cx + cA*i2, cy + sA*i2, kr * 0.09f);
+            const float dr = kr * 0.07f;
+            g.fillEllipse (cx + cA*i2 - dr, cy + sA*i2 - dr, dr * 2, dr * 2);
+        }
+
+        // Value arc (on top)
+        {
+            Path p;
+            p.addArc (cx - arcR, cy - arcR, arcR*2, arcR*2, startA, angle, true);
+            g.setColour (Colour (0xffcc2200));
+            g.strokePath (p, PathStrokeType (tW, PathStrokeType::curved, PathStrokeType::rounded));
+        }
+    }
+
+    void drawLinearSlider (juce::Graphics& g, int x, int y, int w, int h,
+                           float pos, float /*minPos*/, float /*maxPos*/,
+                           const juce::Slider::SliderStyle style, juce::Slider& sl) override
+    {
+        if (style != juce::Slider::LinearHorizontal)
+        { juce::LookAndFeel_V4::drawLinearSlider (g, x, y, w, h, pos, 0, 0, style, sl); return; }
+
+        using namespace juce;
+        const float ty = y + h * 0.5f;
+        const float th = 4.0f;
+        const float tr = th * 0.5f;
+        const float tr2 = 8.0f; // thumb radius
+
+        // Track bg
+        g.setColour (Colour (0xffd2d6dd));
+        g.fillRoundedRectangle ((float)x, ty - tr, (float)w, th, tr);
+
+        // Filled
+        if (pos > x)
+        {
+            g.setColour (Colour (0xffcc2200));
+            g.fillRoundedRectangle ((float)x, ty - tr, pos - x, th, tr);
+        }
+
+        // Thumb shadow
+        g.setColour (Colour (0x28000000));
+        g.fillEllipse (pos - tr2 + 1.0f, ty - tr2 + 1.5f, tr2 * 2, tr2 * 2);
+
+        // Thumb body
+        {
+            ColourGradient tg (
+                Colour (0xfff2f4f7), pos - tr2 * 0.3f, ty - tr2 * 0.4f,
+                Colour (0xff9aa0a8), pos + tr2 * 0.2f, ty + tr2 * 0.4f,
+                false);
+            g.setGradientFill (tg);
+            g.fillEllipse (pos - tr2, ty - tr2, tr2 * 2, tr2 * 2);
+        }
+
+        // Thumb specular
+        {
+            ColourGradient sp (
+                Colour (0x66ffffff), pos - tr2 * 0.2f, ty - tr2 * 0.5f,
+                Colour (0x00ffffff), pos + tr2 * 0.1f, ty,
+                false);
+            g.setGradientFill (sp);
+            g.fillEllipse (pos - tr2 * 0.75f, ty - tr2 * 0.82f, tr2 * 1.25f, tr2 * 1.0f);
+        }
+
+        // Thumb border
+        g.setColour (Colour (0xff6c7480));
+        g.drawEllipse (pos - tr2, ty - tr2, tr2 * 2, tr2 * 2, 0.8f);
+    }
+};
+
+//==============================================================================
 namespace
 {
     constexpr int kW      = 480;
@@ -107,8 +244,14 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
     hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
     hardClipButton.onClick = [this] {
-        hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF"); };
+        const bool on = hardClipButton.getToggleState();
+        hardClipButton.setButtonText (on ? "HARD ON" : "HARD OFF");
+        velvetCeilingSlider.setEnabled (on);
+        velvetCeilingLabel .setEnabled (on);
+    };
     addAndMakeVisible (hardClipButton);
+    velvetCeilingSlider.setEnabled (initHardClip);
+    velvetCeilingLabel .setEnabled (initHardClip);
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
@@ -166,12 +309,16 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc2200));
     addAndMakeVisible (oversampleBox);
 
+    laf = std::make_unique<ThePressLookAndFeel>();
+    setLookAndFeel (laf.get());
+
     setSize (kW, kH);
     startTimerHz (30);
 }
 
 AWCascadeEditor::~AWCascadeEditor()
 {
+    setLookAndFeel (nullptr);
     stopTimer();
 }
 
@@ -183,7 +330,10 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
-    hardClipButton.setButtonText     (hardClipButton.getToggleState()     ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF");
+    const bool hcOn = hardClipButton.getToggleState();
+    velvetCeilingSlider.setEnabled (hcOn);
+    velvetCeilingLabel .setEnabled (hcOn);
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
