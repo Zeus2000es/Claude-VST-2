@@ -103,6 +103,9 @@ public:
         g.setColour (Colour (0xff6c7480));
         g.drawEllipse (pos - tr2, ty - tr2, tr2 * 2, tr2 * 2, 0.8f);
     }
+
+private:
+    juce::Image knobStrip;
 };
 
 //==============================================================================
