@@ -168,7 +168,16 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlo
     std::memset (intermediateR, 0, sizeof (intermediateR));
     fpdL_cs = 1; while (fpdL_cs < 16386) fpdL_cs = (uint32_t)(rand() * (double)UINT32_MAX);
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
-    hardClipPrevL = hardClipPrevR = 0.0;
+
+    lastSampleL_co3 = lastSampleR_co3 = 0.0;
+    std::memset (intermediateL_co3, 0, sizeof (intermediateL_co3));
+    std::memset (intermediateR_co3, 0, sizeof (intermediateR_co3));
+    std::memset (slewL_co3, 0, sizeof (slewL_co3));
+    std::memset (slewR_co3, 0, sizeof (slewR_co3));
+    wasPosClipL_co3 = wasNegClipL_co3 = false;
+    wasPosClipR_co3 = wasNegClipR_co3 = false;
+    fpdL_co3 = 1; while (fpdL_co3 < 16386) fpdL_co3 = (uint32_t)(rand() * (double)UINT32_MAX);
+    fpdR_co3 = 1; while (fpdR_co3 < 16386) fpdR_co3 = (uint32_t)(rand() * (double)UINT32_MAX);
 
     meterInL = meterInR = meterOutL = meterOutR = 0.0f;
 
@@ -390,53 +399,100 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
         }
 
         // ============================================================
-        //  VELVET CLIP (ClipSoftly) — soft sine ceiling, always last
+        //  VELVET CLIP (ClipSoftly) — exact airwindows algorithm
         // ============================================================
         if (!bypassVelvet)
         {
             if (std::fabs (sampleL) < 1.18e-23) sampleL = fpdL_cs * 1.18e-17;
             if (std::fabs (sampleR) < 1.18e-23) sampleR = fpdR_cs * 1.18e-17;
-            { double ss=std::fabs(sampleL); if(ss<1.0)ss=1.0;else ss=1.0/ss;
-              if(sampleL>1.57079633)sampleL=1.57079633; if(sampleL<-1.57079633)sampleL=-1.57079633;
-              sampleL=std::sin(sampleL)*ceilingLinear; sampleL=(sampleL*ss)+(lastSampleL_cs*(1.0-ss)); }
-            { double ss=std::fabs(sampleR); if(ss<1.0)ss=1.0;else ss=1.0/ss;
-              if(sampleR>1.57079633)sampleR=1.57079633; if(sampleR<-1.57079633)sampleR=-1.57079633;
-              sampleR=std::sin(sampleR)*ceilingLinear; sampleR=(sampleR*ss)+(lastSampleR_cs*(1.0-ss)); }
-            intermediateL[csSpacing]=sampleL; sampleL=lastSampleL_cs;
-            for(int x=csSpacing;x>0;--x) intermediateL[x-1]=intermediateL[x];
-            lastSampleL_cs=intermediateL[0];
-            intermediateR[csSpacing]=sampleR; sampleR=lastSampleR_cs;
-            for(int x=csSpacing;x>0;--x) intermediateR[x-1]=intermediateR[x];
-            lastSampleR_cs=intermediateR[0];
-            fpdL_cs^=fpdL_cs<<13; fpdL_cs^=fpdL_cs>>17; fpdL_cs^=fpdL_cs<<5;
-            fpdR_cs^=fpdR_cs<<13; fpdR_cs^=fpdR_cs>>17; fpdR_cs^=fpdR_cs<<5;
-            // Unconditional clamp: ClipSoftly feedback can overshoot on sharp transients
-            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
-            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
-            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
-            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
+
+            double ssL = std::fabs (sampleL); if (ssL < 1.0) ssL = 1.0; else ssL = 1.0 / ssL;
+            if (sampleL >  1.57079633) sampleL =  1.57079633;
+            if (sampleL < -1.57079633) sampleL = -1.57079633;
+            sampleL = std::sin (sampleL) * ceilingLinear;
+            sampleL = (sampleL * ssL) + (lastSampleL_cs * (1.0 - ssL));
+            intermediateL[csSpacing] = sampleL; sampleL = lastSampleL_cs;
+            for (int x = csSpacing; x > 0; --x) intermediateL[x-1] = intermediateL[x];
+            lastSampleL_cs = intermediateL[0];
+
+            double ssR = std::fabs (sampleR); if (ssR < 1.0) ssR = 1.0; else ssR = 1.0 / ssR;
+            if (sampleR >  1.57079633) sampleR =  1.57079633;
+            if (sampleR < -1.57079633) sampleR = -1.57079633;
+            sampleR = std::sin (sampleR) * ceilingLinear;
+            sampleR = (sampleR * ssR) + (lastSampleR_cs * (1.0 - ssR));
+            intermediateR[csSpacing] = sampleR; sampleR = lastSampleR_cs;
+            for (int x = csSpacing; x > 0; --x) intermediateR[x-1] = intermediateR[x];
+            lastSampleR_cs = intermediateR[0];
+
+            fpdL_cs ^= fpdL_cs << 13; fpdL_cs ^= fpdL_cs >> 17; fpdL_cs ^= fpdL_cs << 5;
+            fpdR_cs ^= fpdR_cs << 13; fpdR_cs ^= fpdR_cs >> 17; fpdR_cs ^= fpdR_cs << 5;
         }
 
         // ============================================================
-        //  HARD CLIP (ClipOnly3-inspired) — separate, independent stage
-        //  Intersample peak detection: checks max between prev and current
-        //  sample to catch peaks that exist between samples.
+        //  HARD CLIP (ClipOnly3) — exact airwindows algorithm
         // ============================================================
         if (hardClip)
         {
-            // Intersample peak: if the line between prev and current exceeds
-            // ceiling, scale both down proportionally (same ratio, preserves shape)
-            const double peakL = std::max (std::fabs (hardClipPrevL), std::fabs (sampleL));
-            const double peakR = std::max (std::fabs (hardClipPrevR), std::fabs (sampleR));
-            if (peakL > ceilingLinear) sampleL *= ceilingLinear / peakL;
-            if (peakR > ceilingLinear) sampleR *= ceilingLinear / peakR;
-            // Hard floor: catch any remaining overshoot
-            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
-            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
-            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
-            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
-            hardClipPrevL = sampleL;
-            hardClipPrevR = sampleR;
+            // --- Left channel ---
+            const double noiseL = 1.0 - ((double(fpdL_co3) / (double)UINT32_MAX) * 0.076);
+            if (wasPosClipL_co3) {
+                if (sampleL < lastSampleL_co3) lastSampleL_co3 = (0.9085097 * noiseL) + (sampleL * (1.0 - noiseL));
+                else lastSampleL_co3 = 0.94;
+            }
+            wasPosClipL_co3 = false;
+            if (sampleL > 0.9085097) { wasPosClipL_co3 = true; sampleL = (0.9085097 * noiseL) + (lastSampleL_co3 * (1.0 - noiseL)); }
+            if (wasNegClipL_co3) {
+                if (sampleL > lastSampleL_co3) lastSampleL_co3 = (-0.9085097 * noiseL) + (sampleL * (1.0 - noiseL));
+                else lastSampleL_co3 = -0.94;
+            }
+            wasNegClipL_co3 = false;
+            if (sampleL < -0.9085097) { wasNegClipL_co3 = true; sampleL = (-0.9085097 * noiseL) + (lastSampleL_co3 * (1.0 - noiseL)); }
+            slewL_co3[csSpacing * 2] = std::fabs (lastSampleL_co3 - sampleL);
+            for (int x = csSpacing * 2; x > 0; x--) slewL_co3[x-1] = slewL_co3[x];
+            intermediateL_co3[csSpacing] = sampleL; sampleL = lastSampleL_co3;
+            for (int x = csSpacing; x > 0; x--) intermediateL_co3[x-1] = intermediateL_co3[x];
+            lastSampleL_co3 = intermediateL_co3[0];
+            if (wasPosClipL_co3 || wasNegClipL_co3) {
+                for (int x = csSpacing; x > 0; x--) lastSampleL_co3 += intermediateL_co3[x];
+                lastSampleL_co3 /= (double) csSpacing;
+            }
+            double finalSlewL = 0.0;
+            for (int x = csSpacing * 2; x >= 0; x--) if (finalSlewL < slewL_co3[x]) finalSlewL = slewL_co3[x];
+            const double postclipL = 0.94 / (1.0 + (finalSlewL * 1.3986013));
+            if (sampleL >  postclipL) sampleL =  postclipL;
+            if (sampleL < -postclipL) sampleL = -postclipL;
+
+            // --- Right channel ---
+            const double noiseR = 1.0 - ((double(fpdR_co3) / (double)UINT32_MAX) * 0.076);
+            if (wasPosClipR_co3) {
+                if (sampleR < lastSampleR_co3) lastSampleR_co3 = (0.9085097 * noiseR) + (sampleR * (1.0 - noiseR));
+                else lastSampleR_co3 = 0.94;
+            }
+            wasPosClipR_co3 = false;
+            if (sampleR > 0.9085097) { wasPosClipR_co3 = true; sampleR = (0.9085097 * noiseR) + (lastSampleR_co3 * (1.0 - noiseR)); }
+            if (wasNegClipR_co3) {
+                if (sampleR > lastSampleR_co3) lastSampleR_co3 = (-0.9085097 * noiseR) + (sampleR * (1.0 - noiseR));
+                else lastSampleR_co3 = -0.94;
+            }
+            wasNegClipR_co3 = false;
+            if (sampleR < -0.9085097) { wasNegClipR_co3 = true; sampleR = (-0.9085097 * noiseR) + (lastSampleR_co3 * (1.0 - noiseR)); }
+            slewR_co3[csSpacing * 2] = std::fabs (lastSampleR_co3 - sampleR);
+            for (int x = csSpacing * 2; x > 0; x--) slewR_co3[x-1] = slewR_co3[x];
+            intermediateR_co3[csSpacing] = sampleR; sampleR = lastSampleR_co3;
+            for (int x = csSpacing; x > 0; x--) intermediateR_co3[x-1] = intermediateR_co3[x];
+            lastSampleR_co3 = intermediateR_co3[0];
+            if (wasPosClipR_co3 || wasNegClipR_co3) {
+                for (int x = csSpacing; x > 0; x--) lastSampleR_co3 += intermediateR_co3[x];
+                lastSampleR_co3 /= (double) csSpacing;
+            }
+            double finalSlewR = 0.0;
+            for (int x = csSpacing * 2; x >= 0; x--) if (finalSlewR < slewR_co3[x]) finalSlewR = slewR_co3[x];
+            const double postclipR = 0.94 / (1.0 + (finalSlewR * 1.3986013));
+            if (sampleR >  postclipR) sampleR =  postclipR;
+            if (sampleR < -postclipR) sampleR = -postclipR;
+
+            fpdL_co3 ^= fpdL_co3 << 13; fpdL_co3 ^= fpdL_co3 >> 17; fpdL_co3 ^= fpdL_co3 << 5;
+            fpdR_co3 ^= fpdR_co3 << 13; fpdR_co3 ^= fpdR_co3 >> 17; fpdR_co3 ^= fpdR_co3 << 5;
         }
 
         inL[i] = (float) sampleL;
