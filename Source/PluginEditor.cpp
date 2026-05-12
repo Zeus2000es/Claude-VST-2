@@ -179,7 +179,6 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       evenDryWetAttach   (p.apvts, "evenDryWet",      evenDryWetSlider),
       evenBypassAttach   (p.apvts, "bypassEven",      evenBypassButton),
       doubleAttach       (p.apvts, "doubleEffect",    doubleButton),
-      velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
       hardClipAttach     (p.apvts, "hardClip",        hardClipButton),
       swapAttach         (p.apvts, "swapOrder",       swapButton)
@@ -215,14 +214,9 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
     hardClipButton.setButtonText (initHardClip ? "TP ON" : "TP OFF");
     hardClipButton.onClick = [this] {
-        const bool on = hardClipButton.getToggleState();
-        hardClipButton.setButtonText (on ? "TP ON" : "TP OFF");
-        velvetCeilingSlider.setEnabled (on);
-        velvetCeilingLabel .setEnabled (on);
+        hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
     };
     addAndMakeVisible (hardClipButton);
-    velvetCeilingSlider.setEnabled (initHardClip);
-    velvetCeilingLabel .setEnabled (initHardClip);
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
@@ -235,23 +229,6 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     doubleButton.onClick = [this] {
         doubleButton.setButtonText (doubleButton.getToggleState() ? "x2 ON" : "x2"); };
     addAndMakeVisible (doubleButton);
-
-    // Velvet ceiling slider (horizontal)
-    velvetCeilingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
-    velvetCeilingSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 60, 16);
-    velvetCeilingSlider.setColour (juce::Slider::trackColourId,            juce::Colour (0xffcc2200));
-    velvetCeilingSlider.setColour (juce::Slider::backgroundColourId,       juce::Colour (0xffe8c8c0));
-    velvetCeilingSlider.setColour (juce::Slider::thumbColourId,             juce::Colour (0xffaa1100));
-    velvetCeilingSlider.setColour (juce::Slider::textBoxTextColourId,       juce::Colour (0xff111111));
-    velvetCeilingSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colour (0xffffffff));
-    velvetCeilingSlider.setColour (juce::Slider::textBoxOutlineColourId,   juce::Colours::transparentBlack);
-    addAndMakeVisible (velvetCeilingSlider);
-
-    velvetCeilingLabel.setText ("Ceiling", juce::dontSendNotification);
-    velvetCeilingLabel.setFont (juce::FontOptions (10.0f));
-    velvetCeilingLabel.setColour (juce::Label::textColourId, juce::Colour (0xff884444));
-    velvetCeilingLabel.setJustificationType (juce::Justification::centredLeft);
-    addAndMakeVisible (velvetCeilingLabel);
 
     // Swap button
     swapButton.setClickingTogglesState (true);
@@ -305,9 +282,6 @@ void AWCascadeEditor::timerCallback()
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
     hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
-    const bool hcOn = hardClipButton.getToggleState();
-    velvetCeilingSlider.setEnabled (hcOn);
-    velvetCeilingLabel .setEnabled (hcOn);
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
@@ -499,10 +473,6 @@ void AWCascadeEditor::resized()
     // Velvet section
     velvetBypassButton.setBounds (bypassX,      yClip + 5, 60, 16);
     hardClipButton    .setBounds (bypassX - 72, yClip + 5, 68, 16);
-    const int ceilX = kPad + 10;
-    const int ceilY = yClip + kSecHd + kBioH + 6;
-    velvetCeilingLabel.setBounds  (ceilX, ceilY, 52, 16);
-    velvetCeilingSlider.setBounds (ceilX + 54, ceilY, kW - kPad*2 - 20 - 54, 20);
 
     // Oversampling ComboBox
     oversampleBox.setBounds (kW / 2 + 24, yOs + 3, 90, 22);
