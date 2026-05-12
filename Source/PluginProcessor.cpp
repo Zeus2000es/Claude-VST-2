@@ -168,6 +168,7 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlo
     std::memset (intermediateR, 0, sizeof (intermediateR));
     fpdL_cs = 1; while (fpdL_cs < 16386) fpdL_cs = (uint32_t)(rand() * (double)UINT32_MAX);
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
+    hardClipPrevL = hardClipPrevR = 0.0;
 
     meterInL = meterInR = meterOutL = meterOutR = 0.0f;
 
@@ -389,7 +390,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
         }
 
         // ============================================================
-        //  VELVET CLIP — always last
+        //  VELVET CLIP (ClipSoftly) — soft sine ceiling, always last
         // ============================================================
         if (!bypassVelvet)
         {
@@ -409,14 +410,33 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             lastSampleR_cs=intermediateR[0];
             fpdL_cs^=fpdL_cs<<13; fpdL_cs^=fpdL_cs>>17; fpdL_cs^=fpdL_cs<<5;
             fpdR_cs^=fpdR_cs<<13; fpdR_cs^=fpdR_cs>>17; fpdR_cs^=fpdR_cs<<5;
-            // Hard clip safety net (toggleable)
-            if (hardClip)
-            {
-                if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
-                if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
-                if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
-                if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
-            }
+            // Unconditional clamp: ClipSoftly feedback can overshoot on sharp transients
+            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
+            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
+            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
+            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
+        }
+
+        // ============================================================
+        //  HARD CLIP (ClipOnly3-inspired) — separate, independent stage
+        //  Intersample peak detection: checks max between prev and current
+        //  sample to catch peaks that exist between samples.
+        // ============================================================
+        if (hardClip)
+        {
+            // Intersample peak: if the line between prev and current exceeds
+            // ceiling, scale both down proportionally (same ratio, preserves shape)
+            const double peakL = std::max (std::fabs (hardClipPrevL), std::fabs (sampleL));
+            const double peakR = std::max (std::fabs (hardClipPrevR), std::fabs (sampleR));
+            if (peakL > ceilingLinear) sampleL *= ceilingLinear / peakL;
+            if (peakR > ceilingLinear) sampleR *= ceilingLinear / peakR;
+            // Hard floor: catch any remaining overshoot
+            if (sampleL >  ceilingLinear) sampleL =  ceilingLinear;
+            if (sampleL < -ceilingLinear) sampleL = -ceilingLinear;
+            if (sampleR >  ceilingLinear) sampleR =  ceilingLinear;
+            if (sampleR < -ceilingLinear) sampleR = -ceilingLinear;
+            hardClipPrevL = sampleL;
+            hardClipPrevR = sampleR;
         }
 
         inL[i] = (float) sampleL;

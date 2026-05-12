@@ -57,6 +57,9 @@ private:
     double intermediateL[17], intermediateR[17];
     uint32_t fpdL_cs, fpdR_cs;
 
+    // ---- Hard Clip (ClipOnly3-inspired) ----
+    double hardClipPrevL, hardClipPrevR;
+
     // ---- Oversampling ----
     juce::dsp::Oversampling<float> os2x;
     juce::dsp::Oversampling<float> os4x;
