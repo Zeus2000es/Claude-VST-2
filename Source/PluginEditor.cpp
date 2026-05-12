@@ -247,19 +247,6 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
         repaint();
     };
 
-    // Oversampling ComboBox
-    oversampleBox.addItem ("Off", 1);
-    oversampleBox.addItem ("2x",  2);
-    oversampleBox.addItem ("4x",  3);
-    oversampleBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xffffffff));
-    oversampleBox.setColour (juce::ComboBox::textColourId,       juce::Colour (0xff111111));
-    oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xffcc2200));
-    oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc2200));
-    addAndMakeVisible (oversampleBox);
-    // Attach AFTER items are added so sendInitialUpdate() finds the correct item
-    oversampleAttach = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-        p.apvts, "oversample", oversampleBox);
-
     laf = std::make_unique<ThePressLookAndFeel>();
     setLookAndFeel (laf.get());
 
@@ -406,7 +393,7 @@ void AWCascadeEditor::paint (juce::Graphics& g)
     const int ySwap = y1 + kSecH + kSGap;
     const int y2    = ySwap + 36 + kSGap;
     const int yClip = y2 + kSecH + kSGap;
-    const int yOs   = yClip + kClipH + kSGap;
+
 
     drawSection (sec1, y1, kSecH);
     drawSection (sec2, y2, kSecH);
@@ -427,11 +414,6 @@ void AWCascadeEditor::paint (juce::Graphics& g)
                 kPad + 10, yClip + 27, kW - kPad*2 - 20, kBioH,
                 juce::Justification::centredLeft);
 
-    // ---- Oversampling row ----
-    g.setFont (juce::FontOptions (10.5f));
-    g.setColour (kText);
-    g.drawText ("Oversample:", 0, yOs + 5, kW / 2 + 20, 18, juce::Justification::centredRight);
-
     // ---- Footer ----
     g.setFont (juce::FontOptions (10.0f));
     g.setColour (juce::Colour (0xffaa4433));
@@ -446,7 +428,7 @@ void AWCascadeEditor::resized()
     const int ySwap = y1 + kSecH + kSGap;
     const int y2    = ySwap + 36 + kSGap;
     const int yClip = y2 + kSecH + kSGap;
-    const int yOs   = yClip + kClipH + kSGap;
+
 
     swapButton.setBounds ((kW - 188) / 2, ySwap + 4, 188, 27);
 
@@ -474,6 +456,4 @@ void AWCascadeEditor::resized()
     velvetBypassButton.setBounds (bypassX,      yClip + 5, 60, 16);
     hardClipButton    .setBounds (bypassX - 72, yClip + 5, 68, 16);
 
-    // Oversampling ComboBox
-    oversampleBox.setBounds (kW / 2 + 24, yOs + 3, 90, 22);
 }

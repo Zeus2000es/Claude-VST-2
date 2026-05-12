@@ -57,20 +57,16 @@ All production commits go to `claude/vst3-juce-airwindows-UV4JH`.
 ```
 processBlock()
   ├── measure input peaks → meterInL/R (atomic)
-  ├── if OS=2x: os2x.processSamplesUp → processChain → os2x.processSamplesDown
-  ├── if OS=4x: os4x.processSamplesUp → processChain → os4x.processSamplesDown
-  ├── if OS=off: processChain at native rate
+  ├── processChain at native sample rate
   └── measure output peaks → meterOutL/R (atomic)
 
 processChain(L, R, numSamples, actualSR)
-  ├── read all APVTS params once (never inside per-sample loop except hardClip)
+  ├── read all APVTS params once (never inside per-sample loop)
   ├── [APEX LIMITER or EVEN DRIVE first, depending on swapOrder]
   ├── [the other one second]
-  ├── VELVET CLIP (ClipSoftly) — always last before TP
+  ├── VELVET CLIP (ClipSoftly) — always last
   └── TP clamp at 0.9549925859 (only if hardClip==true)
 ```
-
-**Critical**: `processChain` is called at the oversampled rate when OS is active. The TP clamp inside processChain therefore runs at 2x or 4x the sample rate, which catches inter-sample peaks. At OS=off, it is only a sample-level clamp.
 
 ### DSP algorithms (exact airwindows ports)
 
@@ -101,7 +97,6 @@ All parameters use `ParameterID("name", 1)` — version number must stay at 1 to
 | `bypassVelvet` | Bool | false | |
 | `hardClip` | Bool | true | Enables TP clamp at -0.4 dBTP |
 | `swapOrder` | Bool | false | Apex first (false) or Even first (true) |
-| `oversample` | Choice 0/1/2 | 1 | Off / 2x / 4x |
 
 ### UI (`PluginEditor.cpp`)
 
@@ -124,4 +119,5 @@ Meter atomics (`meterInL/R`, `meterOutL/R`) are `std::atomic<float>` — written
 - **ClipSoftly ceiling**: hardcoded `0.9549925859` (= sin(π/2 - small offset) × constant). This is the exact airwindows value — do not replace with a dB-converted parameter.
 - **TP clamp redundancy**: ClipSoftly already soft-clips to ~0.9549, so the TP clamp (same value) only affects inter-sample reconstruction peaks at the oversampled rate. At OS=off it is a belt-and-suspenders sample-level clamp.
 - **`tpOS` was tried and removed**: a separate 4x Oversampling stage for TP caused IIR downsample filter ringing *above* the ceiling — worse than no TP at all. The clamp inside `processChain` is the correct location.
+- **Oversampling was removed entirely**: it was causing more problems than it solved (inter-sample peaks from the IIR downsample filter exceeded the ceiling). The plugin runs at native sample rate only.
 - **`juce_add_binary_data` bypassed**: juceaide crashes on the 3.6 MB knob strip PNG. The `tools/png_to_header.ps1` / `tools/png_to_header.py` scripts generate `Source/KnobStripData.h` directly.

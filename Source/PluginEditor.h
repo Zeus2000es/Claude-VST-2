@@ -51,10 +51,6 @@ private:
     juce::TextButton swapButton;
     juce::AudioProcessorValueTreeState::ButtonAttachment swapAttach;
 
-    // Oversampling
-    juce::ComboBox oversampleBox;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversampleAttach;
-
     // Meter display values (UI thread only, decayed in timerCallback)
     float dispInL{0.0f}, dispInR{0.0f}, dispOutL{0.0f}, dispOutR{0.0f};
 

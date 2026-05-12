@@ -120,11 +120,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
     // ---- Swap order ----
     layout.add (std::make_unique<PB> (PID ("swapOrder", 1), "Swap Order", false));
 
-    // ---- Oversampling ----
-    layout.add (std::make_unique<PC> (
-        PID ("oversample", 1), "Oversample",
-        juce::StringArray { "Off", "2x", "4x" }, 1));
-
     return layout;
 }
 
@@ -132,9 +127,7 @@ AWCascadeProcessor::AWCascadeProcessor()
     : AudioProcessor (BusesProperties()
                          .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "Parameters", createParameterLayout()),
-      os2x (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
-      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
+      apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
     prepareToPlay (44100.0, 512);
 }
@@ -164,16 +157,9 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlo
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
 
     meterInL = meterInR = meterOutL = meterOutR = 0.0f;
-
-    os2x.initProcessing ((size_t) samplesPerBlock);
-    os4x.initProcessing ((size_t) samplesPerBlock);
 }
 
-void AWCascadeProcessor::releaseResources()
-{
-    os2x.reset();
-    os4x.reset();
-}
+void AWCascadeProcessor::releaseResources() {}
 
 bool AWCascadeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -446,32 +432,8 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     meterInL.store (inPeakL);
     meterInR.store (inPeakR);
 
-    // Route through oversampler (or direct)
-    const int osMode = (int) apvts.getRawParameterValue ("oversample")->load();
-
-    if (osMode == 0)
-    {
-        processChain (buffer.getWritePointer (0), buffer.getWritePointer (1),
-                      numSamples, getSampleRate());
-    }
-    else
-    {
-        auto block = juce::dsp::AudioBlock<float> (buffer);
-        if (osMode == 1)
-        {
-            auto upBlock = os2x.processSamplesUp (block);
-            processChain (upBlock.getChannelPointer (0), upBlock.getChannelPointer (1),
-                          (int) upBlock.getNumSamples(), getSampleRate() * 2.0);
-            os2x.processSamplesDown (block);
-        }
-        else
-        {
-            auto upBlock = os4x.processSamplesUp (block);
-            processChain (upBlock.getChannelPointer (0), upBlock.getChannelPointer (1),
-                          (int) upBlock.getNumSamples(), getSampleRate() * 4.0);
-            os4x.processSamplesDown (block);
-        }
-    }
+    processChain (buffer.getWritePointer (0), buffer.getWritePointer (1),
+                  numSamples, getSampleRate());
 
     // Measure output peaks
     float outPeakL = 0.0f, outPeakR = 0.0f;
