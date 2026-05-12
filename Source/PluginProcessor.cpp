@@ -140,7 +140,8 @@ AWCascadeProcessor::AWCascadeProcessor()
                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "Parameters", createParameterLayout()),
       os2x (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
-      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
+      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
+      tpOS (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
 {
     prepareToPlay (44100.0, 512);
 }
@@ -169,26 +170,18 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlo
     fpdL_cs = 1; while (fpdL_cs < 16386) fpdL_cs = (uint32_t)(rand() * (double)UINT32_MAX);
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
 
-    lastSampleL_co3 = lastSampleR_co3 = 0.0;
-    std::memset (intermediateL_co3, 0, sizeof (intermediateL_co3));
-    std::memset (intermediateR_co3, 0, sizeof (intermediateR_co3));
-    std::memset (slewL_co3, 0, sizeof (slewL_co3));
-    std::memset (slewR_co3, 0, sizeof (slewR_co3));
-    wasPosClipL_co3 = wasNegClipL_co3 = false;
-    wasPosClipR_co3 = wasNegClipR_co3 = false;
-    fpdL_co3 = 1; while (fpdL_co3 < 16386) fpdL_co3 = (uint32_t)(rand() * (double)UINT32_MAX);
-    fpdR_co3 = 1; while (fpdR_co3 < 16386) fpdR_co3 = (uint32_t)(rand() * (double)UINT32_MAX);
-
     meterInL = meterInR = meterOutL = meterOutR = 0.0f;
 
     os2x.initProcessing ((size_t) samplesPerBlock);
     os4x.initProcessing ((size_t) samplesPerBlock);
+    tpOS.initProcessing ((size_t) samplesPerBlock);
 }
 
 void AWCascadeProcessor::releaseResources()
 {
     os2x.reset();
     os4x.reset();
+    tpOS.reset();
 }
 
 bool AWCascadeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -426,73 +419,6 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             fpdR_cs ^= fpdR_cs << 13; fpdR_cs ^= fpdR_cs >> 17; fpdR_cs ^= fpdR_cs << 5;
         }
 
-        // ============================================================
-        //  HARD CLIP (ClipOnly3) — exact airwindows algorithm
-        // ============================================================
-        if (hardClip)
-        {
-            // --- Left channel ---
-            const double noiseL = 1.0 - ((double(fpdL_co3) / (double)UINT32_MAX) * 0.076);
-            if (wasPosClipL_co3) {
-                if (sampleL < lastSampleL_co3) lastSampleL_co3 = (0.9085097 * noiseL) + (sampleL * (1.0 - noiseL));
-                else lastSampleL_co3 = 0.94;
-            }
-            wasPosClipL_co3 = false;
-            if (sampleL > 0.9085097) { wasPosClipL_co3 = true; sampleL = (0.9085097 * noiseL) + (lastSampleL_co3 * (1.0 - noiseL)); }
-            if (wasNegClipL_co3) {
-                if (sampleL > lastSampleL_co3) lastSampleL_co3 = (-0.9085097 * noiseL) + (sampleL * (1.0 - noiseL));
-                else lastSampleL_co3 = -0.94;
-            }
-            wasNegClipL_co3 = false;
-            if (sampleL < -0.9085097) { wasNegClipL_co3 = true; sampleL = (-0.9085097 * noiseL) + (lastSampleL_co3 * (1.0 - noiseL)); }
-            slewL_co3[csSpacing * 2] = std::fabs (lastSampleL_co3 - sampleL);
-            for (int x = csSpacing * 2; x > 0; x--) slewL_co3[x-1] = slewL_co3[x];
-            intermediateL_co3[csSpacing] = sampleL; sampleL = lastSampleL_co3;
-            for (int x = csSpacing; x > 0; x--) intermediateL_co3[x-1] = intermediateL_co3[x];
-            lastSampleL_co3 = intermediateL_co3[0];
-            if (wasPosClipL_co3 || wasNegClipL_co3) {
-                for (int x = csSpacing; x > 0; x--) lastSampleL_co3 += intermediateL_co3[x];
-                lastSampleL_co3 /= (double) csSpacing;
-            }
-            double finalSlewL = 0.0;
-            for (int x = csSpacing * 2; x >= 0; x--) if (finalSlewL < slewL_co3[x]) finalSlewL = slewL_co3[x];
-            const double postclipL = 0.94 / (1.0 + (finalSlewL * 1.3986013));
-            if (sampleL >  postclipL) sampleL =  postclipL;
-            if (sampleL < -postclipL) sampleL = -postclipL;
-
-            // --- Right channel ---
-            const double noiseR = 1.0 - ((double(fpdR_co3) / (double)UINT32_MAX) * 0.076);
-            if (wasPosClipR_co3) {
-                if (sampleR < lastSampleR_co3) lastSampleR_co3 = (0.9085097 * noiseR) + (sampleR * (1.0 - noiseR));
-                else lastSampleR_co3 = 0.94;
-            }
-            wasPosClipR_co3 = false;
-            if (sampleR > 0.9085097) { wasPosClipR_co3 = true; sampleR = (0.9085097 * noiseR) + (lastSampleR_co3 * (1.0 - noiseR)); }
-            if (wasNegClipR_co3) {
-                if (sampleR > lastSampleR_co3) lastSampleR_co3 = (-0.9085097 * noiseR) + (sampleR * (1.0 - noiseR));
-                else lastSampleR_co3 = -0.94;
-            }
-            wasNegClipR_co3 = false;
-            if (sampleR < -0.9085097) { wasNegClipR_co3 = true; sampleR = (-0.9085097 * noiseR) + (lastSampleR_co3 * (1.0 - noiseR)); }
-            slewR_co3[csSpacing * 2] = std::fabs (lastSampleR_co3 - sampleR);
-            for (int x = csSpacing * 2; x > 0; x--) slewR_co3[x-1] = slewR_co3[x];
-            intermediateR_co3[csSpacing] = sampleR; sampleR = lastSampleR_co3;
-            for (int x = csSpacing; x > 0; x--) intermediateR_co3[x-1] = intermediateR_co3[x];
-            lastSampleR_co3 = intermediateR_co3[0];
-            if (wasPosClipR_co3 || wasNegClipR_co3) {
-                for (int x = csSpacing; x > 0; x--) lastSampleR_co3 += intermediateR_co3[x];
-                lastSampleR_co3 /= (double) csSpacing;
-            }
-            double finalSlewR = 0.0;
-            for (int x = csSpacing * 2; x >= 0; x--) if (finalSlewR < slewR_co3[x]) finalSlewR = slewR_co3[x];
-            const double postclipR = 0.94 / (1.0 + (finalSlewR * 1.3986013));
-            if (sampleR >  postclipR) sampleR =  postclipR;
-            if (sampleR < -postclipR) sampleR = -postclipR;
-
-            fpdL_co3 ^= fpdL_co3 << 13; fpdL_co3 ^= fpdL_co3 >> 17; fpdL_co3 ^= fpdL_co3 << 5;
-            fpdR_co3 ^= fpdR_co3 << 13; fpdR_co3 ^= fpdR_co3 >> 17; fpdR_co3 ^= fpdR_co3 << 5;
-        }
-
         inL[i] = (float) sampleL;
         inR[i] = (float) sampleR;
     }
@@ -546,21 +472,26 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Hard ceiling clamp — only when hardClip is ON.
-    // velvetCeiling is the absolute output ceiling enforced here.
-    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
+    // True Peak catcher — 4x OS clamp, always-on at ClipSoftly ceiling,
+    // or at velvetCeiling when TP mode is enabled.
     {
-        const float cl = (float) std::pow (10.0,
-            (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0);
-        float* wL = buffer.getWritePointer (0);
-        float* wR = buffer.getWritePointer (1);
-        for (int i = 0; i < numSamples; ++i)
+        const bool tpOn = apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
+        const float tpCeiling = tpOn
+            ? (float) std::pow (10.0, (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0)
+            : 0.9549925859f;
+        auto block = juce::dsp::AudioBlock<float> (buffer);
+        auto upBlock = tpOS.processSamplesUp (block);
+        float* upL = upBlock.getChannelPointer (0);
+        float* upR = upBlock.getChannelPointer (1);
+        const int upN = (int) upBlock.getNumSamples();
+        for (int i = 0; i < upN; ++i)
         {
-            if (wL[i] >  cl) wL[i] =  cl;
-            if (wL[i] < -cl) wL[i] = -cl;
-            if (wR[i] >  cl) wR[i] =  cl;
-            if (wR[i] < -cl) wR[i] = -cl;
+            if (upL[i] >  tpCeiling) upL[i] =  tpCeiling;
+            if (upL[i] < -tpCeiling) upL[i] = -tpCeiling;
+            if (upR[i] >  tpCeiling) upR[i] =  tpCeiling;
+            if (upR[i] < -tpCeiling) upR[i] = -tpCeiling;
         }
+        tpOS.processSamplesDown (block);
     }
 
     // Measure output peaks

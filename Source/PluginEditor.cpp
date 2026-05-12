@@ -182,8 +182,7 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
       hardClipAttach     (p.apvts, "hardClip",        hardClipButton),
-      swapAttach         (p.apvts, "swapOrder",       swapButton),
-      oversampleAttach   (p.apvts, "oversample",      oversampleBox)
+      swapAttach         (p.apvts, "swapOrder",       swapButton)
 {
     setupKnob (apexLimitSlider,    apexLimitLabel,    "Limit",    this);
     setupKnob (apexDryWetSlider,   apexDryWetLabel,   "Dry/Wet",  this);
@@ -214,10 +213,10 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffaaaaaa));
     hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff229922));
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
-    hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (initHardClip ? "TP ON" : "TP OFF");
     hardClipButton.onClick = [this] {
         const bool on = hardClipButton.getToggleState();
-        hardClipButton.setButtonText (on ? "HARD ON" : "HARD OFF");
+        hardClipButton.setButtonText (on ? "TP ON" : "TP OFF");
         velvetCeilingSlider.setEnabled (on);
         velvetCeilingLabel .setEnabled (on);
     };
@@ -280,6 +279,9 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xffcc2200));
     oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc2200));
     addAndMakeVisible (oversampleBox);
+    // Attach AFTER items are added so sendInitialUpdate() finds the correct item
+    oversampleAttach = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        p.apvts, "oversample", oversampleBox);
 
     laf = std::make_unique<ThePressLookAndFeel>();
     setLookAndFeel (laf.get());
@@ -302,7 +304,7 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
-    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
     const bool hcOn = hardClipButton.getToggleState();
     velvetCeilingSlider.setEnabled (hcOn);
     velvetCeilingLabel .setEnabled (hcOn);

@@ -56,7 +56,7 @@ private:
 
     // Oversampling
     juce::ComboBox oversampleBox;
-    juce::AudioProcessorValueTreeState::ComboBoxAttachment oversampleAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> oversampleAttach;
 
     // Meter display values (UI thread only, decayed in timerCallback)
     float dispInL{0.0f}, dispInR{0.0f}, dispOutL{0.0f}, dispOutR{0.0f};
