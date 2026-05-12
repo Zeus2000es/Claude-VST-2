@@ -182,8 +182,7 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       velvetCeilingAttach(p.apvts, "velvetCeiling",   velvetCeilingSlider),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
       hardClipAttach     (p.apvts, "hardClip",        hardClipButton),
-      swapAttach         (p.apvts, "swapOrder",       swapButton),
-      oversampleAttach   (p.apvts, "oversample",      oversampleBox)
+      swapAttach         (p.apvts, "swapOrder",       swapButton)
 {
     setupKnob (apexLimitSlider,    apexLimitLabel,    "Limit",    this);
     setupKnob (apexDryWetSlider,   apexDryWetLabel,   "Dry/Wet",  this);
@@ -280,6 +279,9 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xffcc2200));
     oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc2200));
     addAndMakeVisible (oversampleBox);
+    // Attach AFTER items are added so sendInitialUpdate() finds the correct item
+    oversampleAttach = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        p.apvts, "oversample", oversampleBox);
 
     laf = std::make_unique<ThePressLookAndFeel>();
     setLookAndFeel (laf.get());
