@@ -493,6 +493,17 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             fpdR_co3 ^= fpdR_co3 << 13; fpdR_co3 ^= fpdR_co3 >> 17; fpdR_co3 ^= fpdR_co3 << 5;
         }
 
+        // True-peak ceiling clamp at oversampled rate.
+        // At 2x OS this catches inter-sample peaks to within ~1 dB,
+        // at 4x OS practically perfect.
+        const float ceiling = hardClip
+            ? (float) std::pow (10.0, (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0)
+            : 0.9549925859f;
+        if (sampleL >  ceiling) sampleL =  ceiling;
+        if (sampleL < -ceiling) sampleL = -ceiling;
+        if (sampleR >  ceiling) sampleR =  ceiling;
+        if (sampleR < -ceiling) sampleR = -ceiling;
+
         inL[i] = (float) sampleL;
         inR[i] = (float) sampleR;
     }
@@ -546,24 +557,6 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Ceiling clamp — always active to catch inter-sample reconstruction peaks.
-    // hardClip ON  → use velvetCeiling parameter
-    // hardClip OFF → use ClipSoftly's natural ceiling (0.9549925859)
-    {
-        const bool hc = apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
-        const float cl = hc
-            ? (float) std::pow (10.0, (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0)
-            : 0.9549925859f;
-        float* wL = buffer.getWritePointer (0);
-        float* wR = buffer.getWritePointer (1);
-        for (int i = 0; i < numSamples; ++i)
-        {
-            if (wL[i] >  cl) wL[i] =  cl;
-            if (wL[i] < -cl) wL[i] = -cl;
-            if (wR[i] >  cl) wR[i] =  cl;
-            if (wR[i] < -cl) wR[i] = -cl;
-        }
-    }
 
     // Measure output peaks
     float outPeakL = 0.0f, outPeakR = 0.0f;
