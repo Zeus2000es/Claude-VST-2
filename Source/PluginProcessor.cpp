@@ -114,12 +114,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
     layout.add (std::make_unique<PB> (PID ("doubleEffect", 1), "Double Effect", false));
 
     // ---- Velvet Clip ----
-    layout.add (std::make_unique<PF> (
-        PID ("velvetCeiling", 1), "Velvet Ceiling", NR (-6.0f, -0.1f, 0.01f), -0.4f,
-        Attr().withStringFromValueFunction ([] (float v, int) -> juce::String {
-            return juce::String (v, 1) + " dB";
-        })));
-
     layout.add (std::make_unique<PB> (PID ("bypassVelvet", 1), "Bypass Velvet", false));
     layout.add (std::make_unique<PB> (PID ("hardClip",    1), "Hard Clip",     true));
 
@@ -472,13 +466,11 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // True Peak catcher — 4x OS clamp, always-on at ClipSoftly ceiling,
-    // or at velvetCeiling when TP mode is enabled.
+    // True Peak catcher — 4x OS clamp at ClipSoftly natural ceiling (-0.4 dBTP).
+    // Only runs when TP button is ON.
+    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
     {
-        const bool tpOn = apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
-        const float tpCeiling = tpOn
-            ? (float) std::pow (10.0, (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0)
-            : 0.9549925859f;
+        constexpr float kTPCeiling = 0.9549925859f;
         auto block = juce::dsp::AudioBlock<float> (buffer);
         auto upBlock = tpOS.processSamplesUp (block);
         float* upL = upBlock.getChannelPointer (0);
@@ -486,10 +478,10 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         const int upN = (int) upBlock.getNumSamples();
         for (int i = 0; i < upN; ++i)
         {
-            if (upL[i] >  tpCeiling) upL[i] =  tpCeiling;
-            if (upL[i] < -tpCeiling) upL[i] = -tpCeiling;
-            if (upR[i] >  tpCeiling) upR[i] =  tpCeiling;
-            if (upR[i] < -tpCeiling) upR[i] = -tpCeiling;
+            if (upL[i] >  kTPCeiling) upL[i] =  kTPCeiling;
+            if (upL[i] < -kTPCeiling) upL[i] = -kTPCeiling;
+            if (upR[i] >  kTPCeiling) upR[i] =  kTPCeiling;
+            if (upR[i] < -kTPCeiling) upR[i] = -kTPCeiling;
         }
         tpOS.processSamplesDown (block);
     }

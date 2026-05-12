@@ -42,9 +42,6 @@ private:
     juce::AudioProcessorValueTreeState::ButtonAttachment doubleAttach;
 
     // Velvet Clip
-    juce::Slider     velvetCeilingSlider;
-    juce::Label      velvetCeilingLabel;
-    juce::AudioProcessorValueTreeState::SliderAttachment velvetCeilingAttach;
     juce::TextButton velvetBypassButton;
     juce::AudioProcessorValueTreeState::ButtonAttachment velvetBypassAttach;
     juce::TextButton hardClipButton;
