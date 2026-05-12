@@ -134,8 +134,7 @@ AWCascadeProcessor::AWCascadeProcessor()
                          .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "Parameters", createParameterLayout()),
       os2x (2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
-      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true),
-      tpOS (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
+      os4x (2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true)
 {
     prepareToPlay (44100.0, 512);
 }
@@ -168,14 +167,12 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlo
 
     os2x.initProcessing ((size_t) samplesPerBlock);
     os4x.initProcessing ((size_t) samplesPerBlock);
-    tpOS.initProcessing ((size_t) samplesPerBlock);
 }
 
 void AWCascadeProcessor::releaseResources()
 {
     os2x.reset();
     os4x.reset();
-    tpOS.reset();
 }
 
 bool AWCascadeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -413,6 +410,16 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             fpdR_cs ^= fpdR_cs << 13; fpdR_cs ^= fpdR_cs >> 17; fpdR_cs ^= fpdR_cs << 5;
         }
 
+        // TP clamp at oversampled rate (catches inter-sample peaks when OS is on)
+        if (hardClip)
+        {
+            constexpr double kTP = 0.9549925859;
+            if (sampleL >  kTP) sampleL =  kTP;
+            if (sampleL < -kTP) sampleL = -kTP;
+            if (sampleR >  kTP) sampleR =  kTP;
+            if (sampleR < -kTP) sampleR = -kTP;
+        }
+
         inL[i] = (float) sampleL;
         inR[i] = (float) sampleR;
     }
@@ -464,26 +471,6 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                           (int) upBlock.getNumSamples(), getSampleRate() * 4.0);
             os4x.processSamplesDown (block);
         }
-    }
-
-    // True Peak catcher — 4x OS clamp at ClipSoftly natural ceiling (-0.4 dBTP).
-    // Only runs when TP button is ON.
-    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
-    {
-        constexpr float kTPCeiling = 0.9549925859f;
-        auto block = juce::dsp::AudioBlock<float> (buffer);
-        auto upBlock = tpOS.processSamplesUp (block);
-        float* upL = upBlock.getChannelPointer (0);
-        float* upR = upBlock.getChannelPointer (1);
-        const int upN = (int) upBlock.getNumSamples();
-        for (int i = 0; i < upN; ++i)
-        {
-            if (upL[i] >  kTPCeiling) upL[i] =  kTPCeiling;
-            if (upL[i] < -kTPCeiling) upL[i] = -kTPCeiling;
-            if (upR[i] >  kTPCeiling) upR[i] =  kTPCeiling;
-            if (upR[i] < -kTPCeiling) upR[i] = -kTPCeiling;
-        }
-        tpOS.processSamplesDown (block);
     }
 
     // Measure output peaks

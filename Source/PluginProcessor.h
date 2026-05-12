@@ -57,12 +57,9 @@ private:
     double intermediateL[17], intermediateR[17];
     uint32_t fpdL_cs, fpdR_cs;
 
-    // ---- Oversampling (DSP chain) ----
+    // ---- Oversampling ----
     juce::dsp::Oversampling<float> os2x;
     juce::dsp::Oversampling<float> os4x;
-
-    // ---- True Peak Limiter (4x OS, always-on clamp stage) ----
-    juce::dsp::Oversampling<float> tpOS;
 
     void processChain (float* L, float* R, int numSamples, double actualSR);
 
