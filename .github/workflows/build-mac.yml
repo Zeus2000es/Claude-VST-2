@@ -28,15 +28,41 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Collect artifacts
+      - name: Build installer package
         run: |
-          mkdir -p artifacts
-          cp -r "build/ThePress_artefacts/Release/VST3/The Press.vst3" artifacts/
-          cp -r "build/ThePress_artefacts/Release/AU/The Press.component" artifacts/ 2>/dev/null || true
+          # Payload: VST3 goes to /Library/Audio/Plug-Ins/VST3 (system-wide)
+          mkdir -p pkg_root/Library/Audio/Plug-Ins/VST3
+          cp -r "build/ThePress_artefacts/Release/VST3/The Press.vst3" \
+                "pkg_root/Library/Audio/Plug-Ins/VST3/"
 
-      - name: Upload
+          # AU (optional, may not exist)
+          if [ -d "build/ThePress_artefacts/Release/AU/The Press.component" ]; then
+            mkdir -p pkg_root/Library/Audio/Plug-Ins/Components
+            cp -r "build/ThePress_artefacts/Release/AU/The Press.component" \
+                  "pkg_root/Library/Audio/Plug-Ins/Components/"
+          fi
+
+          # postinstall script: removes Gatekeeper quarantine flag automatically
+          mkdir -p pkg_scripts
+          cat > pkg_scripts/postinstall << 'EOF'
+          #!/bin/bash
+          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/VST3/The Press.vst3" 2>/dev/null || true
+          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/Components/The Press.component" 2>/dev/null || true
+          exit 0
+          EOF
+          chmod +x pkg_scripts/postinstall
+
+          pkgbuild \
+            --root pkg_root \
+            --scripts pkg_scripts \
+            --identifier com.zeus.thepress \
+            --version 1.0.0 \
+            --install-location / \
+            "ThePress-Installer.pkg"
+
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: ThePress-macOS-${{ matrix.os }}
-          path: artifacts/
+          name: ThePress-Installer-${{ matrix.os }}
+          path: ThePress-Installer.pkg
           retention-days: 30
