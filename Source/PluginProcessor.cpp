@@ -546,12 +546,14 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Hard ceiling clamp — only when hardClip is ON.
-    // velvetCeiling is the absolute output ceiling enforced here.
-    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
+    // Ceiling clamp — always active to catch inter-sample reconstruction peaks.
+    // hardClip ON  → use velvetCeiling parameter
+    // hardClip OFF → use ClipSoftly's natural ceiling (0.9549925859)
     {
-        const float cl = (float) std::pow (10.0,
-            (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0);
+        const bool hc = apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
+        const float cl = hc
+            ? (float) std::pow (10.0, (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0)
+            : 0.9549925859f;
         float* wL = buffer.getWritePointer (0);
         float* wR = buffer.getWritePointer (1);
         for (int i = 0; i < numSamples; ++i)
