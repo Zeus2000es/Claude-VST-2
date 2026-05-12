@@ -1,0 +1,39 @@
+name: Build macOS
+
+on:
+  push:
+    branches: [ "claude/vst3-juce-airwindows-UV4JH", "stable/**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone JUCE
+        run: git clone --depth 1 --branch 8.0.0 https://github.com/juce-framework/JUCE.git JUCE
+
+      - name: Generate KnobStripData.h
+        run: python3 tools/png_to_header.py Assets/knob_strip.png Source/KnobStripData.h
+
+      - name: Configure
+        run: cmake -B build -DJUCE_PATH=JUCE -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          cp -r "build/ThePress_artefacts/Release/VST3/The Press.vst3" artifacts/
+          cp -r "build/ThePress_artefacts/Release/AU/The Press.component" artifacts/ 2>/dev/null || true
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThePress-macOS
+          path: artifacts/
+          retention-days: 30
