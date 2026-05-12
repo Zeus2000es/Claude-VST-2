@@ -244,8 +244,6 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
     // ---- Velvet Clip per-block setup ----
     int csSpacing = (int) std::floor (overallscale);
     if (csSpacing < 1) csSpacing = 1; if (csSpacing > 16) csSpacing = 16;
-    const double ceilingDb     = (double) apvts.getRawParameterValue ("velvetCeiling")->load();
-    const double ceilingLinear = std::pow (10.0, ceilingDb / 20.0);
 
     // ---- Per-sample loop ----
     for (int i = 0; i < numSamples; ++i)
@@ -409,7 +407,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             double ssL = std::fabs (sampleL); if (ssL < 1.0) ssL = 1.0; else ssL = 1.0 / ssL;
             if (sampleL >  1.57079633) sampleL =  1.57079633;
             if (sampleL < -1.57079633) sampleL = -1.57079633;
-            sampleL = std::sin (sampleL) * ceilingLinear;
+            sampleL = std::sin (sampleL) * 0.9549925859;
             sampleL = (sampleL * ssL) + (lastSampleL_cs * (1.0 - ssL));
             intermediateL[csSpacing] = sampleL; sampleL = lastSampleL_cs;
             for (int x = csSpacing; x > 0; --x) intermediateL[x-1] = intermediateL[x];
@@ -418,7 +416,7 @@ void AWCascadeProcessor::processChain (float* inL, float* inR,
             double ssR = std::fabs (sampleR); if (ssR < 1.0) ssR = 1.0; else ssR = 1.0 / ssR;
             if (sampleR >  1.57079633) sampleR =  1.57079633;
             if (sampleR < -1.57079633) sampleR = -1.57079633;
-            sampleR = std::sin (sampleR) * ceilingLinear;
+            sampleR = std::sin (sampleR) * 0.9549925859;
             sampleR = (sampleR * ssR) + (lastSampleR_cs * (1.0 - ssR));
             intermediateR[csSpacing] = sampleR; sampleR = lastSampleR_cs;
             for (int x = csSpacing; x > 0; --x) intermediateR[x-1] = intermediateR[x];
@@ -545,6 +543,28 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             processChain (upBlock.getChannelPointer (0), upBlock.getChannelPointer (1),
                           (int) upBlock.getNumSamples(), getSampleRate() * 4.0);
             os4x.processSamplesDown (block);
+        }
+    }
+
+    // Hard ceiling clamp — runs after all DSP and OS downsample.
+    // Catches IIR downsample ringing and enforces velvetCeiling absolutely.
+    // Activates whenever VelvetClip or HardClip is engaged.
+    {
+        const bool bvOn = apvts.getRawParameterValue ("bypassVelvet")->load() < 0.5f;
+        const bool hcOn = apvts.getRawParameterValue ("hardClip")->load()     > 0.5f;
+        if (bvOn || hcOn)
+        {
+            const float cl = (float) std::pow (10.0,
+                (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0);
+            float* wL = buffer.getWritePointer (0);
+            float* wR = buffer.getWritePointer (1);
+            for (int i = 0; i < numSamples; ++i)
+            {
+                if (wL[i] >  cl) wL[i] =  cl;
+                if (wL[i] < -cl) wL[i] = -cl;
+                if (wR[i] >  cl) wR[i] =  cl;
+                if (wR[i] < -cl) wR[i] = -cl;
+            }
         }
     }
 
