@@ -28,6 +28,15 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
+      - name: Ad-hoc code sign
+        run: |
+          codesign --force --deep --sign - \
+            "build/ThePress_artefacts/Release/VST3/The Press.vst3"
+          if [ -d "build/ThePress_artefacts/Release/AU/The Press.component" ]; then
+            codesign --force --deep --sign - \
+              "build/ThePress_artefacts/Release/AU/The Press.component"
+          fi
+
       - name: Build installer package
         run: |
           # Payload: VST3 goes to /Library/Audio/Plug-Ins/VST3 (system-wide)
