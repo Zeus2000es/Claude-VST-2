@@ -1,5 +1,5 @@
 #include "PluginEditor.h"
-#include <BinaryData.h>
+#include "KnobStripData.h"
 
 //==============================================================================
 class ThePressLookAndFeel : public juce::LookAndFeel_V4
@@ -8,7 +8,7 @@ public:
     ThePressLookAndFeel()
     {
         knobStrip = juce::ImageCache::getFromMemory (
-            BinaryData::knob_strip_png, BinaryData::knob_strip_pngSize);
+            knob_strip_png, (int) knob_strip_png_size);
     }
 
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,

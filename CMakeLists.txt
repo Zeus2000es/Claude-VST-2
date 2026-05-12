@@ -52,11 +52,6 @@ juce_add_plugin(ThePress
     HARDENED_RUNTIME_OPTIONS    "com.apple.security.device.audio-input"
 )
 
-juce_add_binary_data(ThePressAssets
-    SOURCES
-        Assets/knob_strip.png
-)
-
 target_sources(ThePress
     PRIVATE
         Source/PluginProcessor.cpp
@@ -75,7 +70,6 @@ target_compile_definitions(ThePress
 
 target_link_libraries(ThePress
     PRIVATE
-        ThePressAssets
         juce::juce_audio_utils
         juce::juce_audio_plugin_client
         juce::juce_dsp
