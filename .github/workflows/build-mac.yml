@@ -7,14 +7,14 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Clone JUCE
-        run: git clone --depth 1 --branch 8.0.0 https://github.com/juce-framework/JUCE.git JUCE
+        run: git clone --depth 1 --branch 8.0.12 https://github.com/juce-framework/JUCE.git JUCE
 
       - name: Generate KnobStripData.h
         run: python3 tools/png_to_header.py Assets/knob_strip.png Source/KnobStripData.h
