@@ -213,10 +213,10 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffaaaaaa));
     hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff229922));
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
-    hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (initHardClip ? "TP ON" : "TP OFF");
     hardClipButton.onClick = [this] {
         const bool on = hardClipButton.getToggleState();
-        hardClipButton.setButtonText (on ? "HARD ON" : "HARD OFF");
+        hardClipButton.setButtonText (on ? "TP ON" : "TP OFF");
         velvetCeilingSlider.setEnabled (on);
         velvetCeilingLabel .setEnabled (on);
     };
@@ -304,7 +304,7 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
-    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
     const bool hcOn = hardClipButton.getToggleState();
     velvetCeilingSlider.setEnabled (hcOn);
     velvetCeilingLabel .setEnabled (hcOn);
