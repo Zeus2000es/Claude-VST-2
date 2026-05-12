@@ -7,7 +7,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    strategy:
+      matrix:
+        os: [macos-14, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -34,6 +37,6 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: ThePress-macOS
+          name: ThePress-macOS-${{ matrix.os }}
           path: artifacts/
           retention-days: 30
