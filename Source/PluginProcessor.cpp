@@ -546,25 +546,20 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Hard ceiling clamp — runs after all DSP and OS downsample.
-    // Catches IIR downsample ringing and enforces velvetCeiling absolutely.
-    // Activates whenever VelvetClip or HardClip is engaged.
+    // Hard ceiling clamp — only when hardClip is ON.
+    // velvetCeiling is the absolute output ceiling enforced here.
+    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
     {
-        const bool bvOn = apvts.getRawParameterValue ("bypassVelvet")->load() < 0.5f;
-        const bool hcOn = apvts.getRawParameterValue ("hardClip")->load()     > 0.5f;
-        if (bvOn || hcOn)
+        const float cl = (float) std::pow (10.0,
+            (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0);
+        float* wL = buffer.getWritePointer (0);
+        float* wR = buffer.getWritePointer (1);
+        for (int i = 0; i < numSamples; ++i)
         {
-            const float cl = (float) std::pow (10.0,
-                (double) apvts.getRawParameterValue ("velvetCeiling")->load() / 20.0);
-            float* wL = buffer.getWritePointer (0);
-            float* wR = buffer.getWritePointer (1);
-            for (int i = 0; i < numSamples; ++i)
-            {
-                if (wL[i] >  cl) wL[i] =  cl;
-                if (wL[i] < -cl) wL[i] = -cl;
-                if (wR[i] >  cl) wR[i] =  cl;
-                if (wR[i] < -cl) wR[i] = -cl;
-            }
+            if (wL[i] >  cl) wL[i] =  cl;
+            if (wL[i] < -cl) wL[i] = -cl;
+            if (wR[i] >  cl) wR[i] =  cl;
+            if (wR[i] < -cl) wR[i] = -cl;
         }
     }
 

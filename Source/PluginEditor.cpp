@@ -107,8 +107,14 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
     hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
     hardClipButton.onClick = [this] {
-        hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF"); };
+        const bool on = hardClipButton.getToggleState();
+        hardClipButton.setButtonText (on ? "HARD ON" : "HARD OFF");
+        velvetCeilingSlider.setEnabled (on);
+        velvetCeilingLabel .setEnabled (on);
+    };
     addAndMakeVisible (hardClipButton);
+    velvetCeilingSlider.setEnabled (initHardClip);
+    velvetCeilingLabel .setEnabled (initHardClip);
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
@@ -183,7 +189,10 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
-    hardClipButton.setButtonText     (hardClipButton.getToggleState()     ? "HARD ON" : "HARD OFF");
+    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "HARD ON" : "HARD OFF");
+    const bool hcOn = hardClipButton.getToggleState();
+    velvetCeilingSlider.setEnabled (hcOn);
+    velvetCeilingLabel .setEnabled (hcOn);
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
