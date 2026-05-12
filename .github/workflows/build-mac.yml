@@ -32,13 +32,13 @@ jobs:
         run: |
           # Payload: VST3 goes to /Library/Audio/Plug-Ins/VST3 (system-wide)
           mkdir -p pkg_root/Library/Audio/Plug-Ins/VST3
-          cp -r "build/ThePress_artefacts/Release/VST3/The Press.vst3" \
+          cp -r "build/ThePress_artefacts/Release/VST3/The Press DEMO.vst3" \
                 "pkg_root/Library/Audio/Plug-Ins/VST3/"
 
           # AU (optional, may not exist)
-          if [ -d "build/ThePress_artefacts/Release/AU/The Press.component" ]; then
+          if [ -d "build/ThePress_artefacts/Release/AU/The Press DEMO.component" ]; then
             mkdir -p pkg_root/Library/Audio/Plug-Ins/Components
-            cp -r "build/ThePress_artefacts/Release/AU/The Press.component" \
+            cp -r "build/ThePress_artefacts/Release/AU/The Press DEMO.component" \
                   "pkg_root/Library/Audio/Plug-Ins/Components/"
           fi
 
@@ -46,8 +46,8 @@ jobs:
           mkdir -p pkg_scripts
           cat > pkg_scripts/postinstall << 'EOF'
           #!/bin/bash
-          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/VST3/The Press.vst3" 2>/dev/null || true
-          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/Components/The Press.component" 2>/dev/null || true
+          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/VST3/The Press DEMO.vst3" 2>/dev/null || true
+          xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/Components/The Press DEMO.component" 2>/dev/null || true
           exit 0
           EOF
           chmod +x pkg_scripts/postinstall
