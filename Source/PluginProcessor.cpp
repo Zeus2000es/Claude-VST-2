@@ -548,10 +548,13 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Final native-rate brick wall — catches IIR ringing from the oversampling
-    // downsample filter, and enforces velvetCeiling above ClipOnly3's hardcoded
-    // ~-0.54 dB internal limit.
-    if (apvts.getRawParameterValue ("hardClip")->load() > 0.5f)
+    // Brick wall at native rate — enforces velvetCeiling as absolute output ceiling.
+    // Runs whenever at least one clipper is active (VelvetClip or HardClip).
+    // Catches both ClipOnly3's internal ~-0.54 dB hardcoded limit exceeding the
+    // user's ceiling, and IIR downsample filter ringing when OS is on.
+    const bool bvActive = apvts.getRawParameterValue ("bypassVelvet")->load() < 0.5f;
+    const bool hcActive = apvts.getRawParameterValue ("hardClip")->load()     > 0.5f;
+    if (bvActive || hcActive)
     {
         const double ceilingDb     = (double) apvts.getRawParameterValue ("velvetCeiling")->load();
         const float  ceilingLinear = (float) std::pow (10.0, ceilingDb / 20.0);
