@@ -2,6 +2,8 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
+class ThePressLookAndFeel;
+
 class AWCascadeEditor : public juce::AudioProcessorEditor,
                         private juce::Timer
 {
@@ -16,6 +18,8 @@ private:
     void timerCallback() override;
 
     AWCascadeProcessor& processor;
+
+    std::unique_ptr<ThePressLookAndFeel> laf;
 
     // Apex Limiter
     juce::Slider apexLimitSlider,  apexDryWetSlider;
