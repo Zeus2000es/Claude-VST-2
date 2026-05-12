@@ -44,8 +44,6 @@ private:
     // Velvet Clip
     juce::TextButton velvetBypassButton;
     juce::AudioProcessorValueTreeState::ButtonAttachment velvetBypassAttach;
-    juce::TextButton hardClipButton;
-    juce::AudioProcessorValueTreeState::ButtonAttachment hardClipAttach;
 
     // Swap
     juce::TextButton swapButton;

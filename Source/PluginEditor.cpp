@@ -180,7 +180,6 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
       evenBypassAttach   (p.apvts, "bypassEven",      evenBypassButton),
       doubleAttach       (p.apvts, "doubleEffect",    doubleButton),
       velvetBypassAttach (p.apvts, "bypassVelvet",    velvetBypassButton),
-      hardClipAttach     (p.apvts, "hardClip",        hardClipButton),
       swapAttach         (p.apvts, "swapOrder",       swapButton)
 {
     setupKnob (apexLimitSlider,    apexLimitLabel,    "Limit",    this);
@@ -206,17 +205,6 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
         velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON"); };
 
     // Hard clip button (default ON)
-    hardClipButton.setClickingTogglesState (true);
-    hardClipButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xfff0e8e8));
-    hardClipButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xfff0e8e8));
-    hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffaaaaaa));
-    hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff229922));
-    const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
-    hardClipButton.setButtonText (initHardClip ? "TP ON" : "TP OFF");
-    hardClipButton.onClick = [this] {
-        hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
-    };
-    addAndMakeVisible (hardClipButton);
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
@@ -268,7 +256,6 @@ void AWCascadeEditor::timerCallback()
     evenBypassButton.setButtonText   (evenBypassButton.getToggleState()   ? "BYPASS" : "ON");
     velvetBypassButton.setButtonText (velvetBypassButton.getToggleState() ? "BYPASS" : "ON");
     doubleButton.setButtonText       (doubleButton.getToggleState()       ? "x2 ON"  : "x2");
-    hardClipButton.setButtonText (hardClipButton.getToggleState() ? "TP ON" : "TP OFF");
 
     // Peak-hold meter decay (attack = instant, release = ~0.85 per frame at 30Hz ≈ 9dB/s)
     auto decay = [](float cur, float incoming) -> float {
@@ -454,6 +441,5 @@ void AWCascadeEditor::resized()
 
     // Velvet section
     velvetBypassButton.setBounds (bypassX,      yClip + 5, 60, 16);
-    hardClipButton    .setBounds (bypassX - 72, yClip + 5, 68, 16);
 
 }
