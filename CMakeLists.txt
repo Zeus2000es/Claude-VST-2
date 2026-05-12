@@ -34,11 +34,11 @@ juce_add_plugin(ThePress
     VERSION                     1.0.0
     COMPANY_NAME                "Zeus"
     PLUGIN_MANUFACTURER_CODE    Zeus
-    PLUGIN_CODE                 TrPs
+    PLUGIN_CODE                 TrPD
     FORMATS                     ${PLUGIN_FORMATS}
-    PRODUCT_NAME                "The Press"
-    PLUGIN_NAME                 "The Press"
-    DESCRIPTION                 "Apex Limiter + Even Drive + Velvet Clip"
+    PRODUCT_NAME                "The Press DEMO"
+    PLUGIN_NAME                 "The Press DEMO"
+    DESCRIPTION                 "Apex Limiter + Even Drive + Velvet Clip (Demo)"
     IS_SYNTH                    FALSE
     NEEDS_MIDI_INPUT            FALSE
     NEEDS_MIDI_OUTPUT           FALSE

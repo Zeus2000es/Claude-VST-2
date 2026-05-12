@@ -156,6 +156,7 @@ void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerB
     fpdR_cs = 1; while (fpdR_cs < 16386) fpdR_cs = (uint32_t)(rand() * (double)UINT32_MAX);
 
     meterInL = meterInR = meterOutL = meterOutR = 0.0f;
+    demoSampleCount = 0;
 }
 
 void AWCascadeProcessor::releaseResources() {}
@@ -434,6 +435,21 @@ void AWCascadeProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     meterOutL.store (outPeakL);
     meterOutR.store (outPeakR);
+
+    // Demo mute: silence for 3 seconds every 30 seconds (33-second cycle)
+    {
+        const double sr           = getSampleRate();
+        const int64_t periodSamps = (int64_t)(sr * 33.0);
+        const int64_t muteStart   = (int64_t)(sr * 30.0);
+        float* wL = buffer.getWritePointer (0);
+        float* wR = buffer.getWritePointer (1);
+        for (int i = 0; i < numSamples; ++i)
+        {
+            if ((demoSampleCount + i) % periodSamps >= muteStart)
+                wL[i] = wR[i] = 0.0f;
+        }
+        demoSampleCount += numSamples;
+    }
 }
 
 //==============================================================================

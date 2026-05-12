@@ -59,5 +59,8 @@ private:
 
     void processChain (float* L, float* R, int numSamples, double actualSR);
 
+    // Demo mode: 30s play / 3s mute cycle
+    int64_t demoSampleCount{0};
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AWCascadeProcessor)
 };
