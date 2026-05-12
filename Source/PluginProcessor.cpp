@@ -129,7 +129,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout AWCascadeProcessor::createPa
     // ---- Oversampling ----
     layout.add (std::make_unique<PC> (
         PID ("oversample", 1), "Oversample",
-        juce::StringArray { "Off", "2x", "4x" }, 0));
+        juce::StringArray { "Off", "2x", "4x" }, 1));
 
     return layout;
 }
