@@ -135,7 +135,7 @@ AWCascadeProcessor::AWCascadeProcessor()
 AWCascadeProcessor::~AWCascadeProcessor() {}
 
 //==============================================================================
-void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int samplesPerBlock)
+void AWCascadeProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)
 {
     std::memset (sL, 0, sizeof (sL));   std::memset (sR, 0, sizeof (sR));
     m1L = m2L = m1R = m2R = 0.0;
