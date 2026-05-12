@@ -2,7 +2,7 @@ name: Build macOS
 
 on:
   push:
-    branches: [ "claude/vst3-juce-airwindows-UV4JH", "stable/**" ]
+    branches: [ "claude/vst3-juce-airwindows-UV4JH", "stable/**", "the-press-demo" ]
   workflow_dispatch:
 
 jobs:
