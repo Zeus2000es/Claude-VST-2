@@ -1,80 +1,49 @@
 #include "PluginEditor.h"
+#include "KnobStripData.h"
 
 //==============================================================================
 class ThePressLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
+    ThePressLookAndFeel()
+    {
+        knobStrip = juce::ImageCache::getFromMemory (
+            knob_strip_png, (int) knob_strip_png_size);
+    }
+
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
                            float pos, float startA, float endA, juce::Slider&) override
     {
         using namespace juce;
-        const float cx    = x + width  * 0.5f;
-        const float cy    = y + height * 0.5f;
-        const float outer = jmin (width, height) * 0.43f;
-        const float kr    = outer * 0.68f;
-        const float angle = startA + pos * (endA - startA);
-        const float tW    = outer * 0.10f;
-        const float arcR  = outer - tW;
 
-        // Track arc
+        const int numFrames = 200;
+        const int frameH    = knobStrip.getHeight() / numFrames;
+        const int frameW    = knobStrip.getWidth();
+        const int frame     = jlimit (0, numFrames - 1, (int) (pos * (numFrames - 1)));
+        const int size      = jmin (width, height);
+        const int ox        = x + (width  - size) / 2;
+        const int oy        = y + (height - size) / 2;
+
+        if (knobStrip.isValid())
         {
-            Path p;
-            p.addArc (cx - arcR, cy - arcR, arcR*2, arcR*2, startA, endA, true);
-            g.setColour (Colour (0xffd2d6dd));
-            g.strokePath (p, PathStrokeType (tW, PathStrokeType::curved, PathStrokeType::rounded));
+            g.drawImage (knobStrip,
+                         ox, oy, size, size,
+                         0, frame * frameH, frameW, frameH);
         }
-
-        // Drop shadow
+        else
         {
-            ColourGradient sh (Colour (0x30000000), cx, cy + kr * 0.15f,
-                               Colour (0x00000000), cx, cy + kr * 1.5f, true);
-            g.setGradientFill (sh);
-            g.fillEllipse (cx - kr * 1.1f, cy - kr * 0.85f + 3.0f, kr * 2.2f, kr * 2.2f);
-        }
-
-        // Knob body — brushed aluminium
-        {
-            ColourGradient grad (
-                Colour (0xfff2f4f7), cx - kr * 0.30f, cy - kr * 0.42f,
-                Colour (0xff8a9099), cx + kr * 0.22f, cy + kr * 0.48f,
-                false);
-            grad.addColour (0.38f, Colour (0xffdce0e6));
-            grad.addColour (0.70f, Colour (0xffb0b8c2));
-            g.setGradientFill (grad);
-            g.fillEllipse (cx - kr, cy - kr, kr * 2, kr * 2);
-        }
-
-        // Specular highlight top-left
-        {
-            ColourGradient sp (
-                Colour (0x88ffffff), cx - kr * 0.22f, cy - kr * 0.54f,
-                Colour (0x00ffffff), cx + kr * 0.14f, cy + kr * 0.06f,
-                false);
-            g.setGradientFill (sp);
-            g.fillEllipse (cx - kr * 0.82f, cy - kr * 0.82f, kr * 1.35f, kr * 1.06f);
-        }
-
-        // Outer ring (dark)
-        g.setColour (Colour (0xff6c7480));
-        g.drawEllipse (cx - kr, cy - kr, kr * 2, kr * 2, 0.9f);
-
-        // Inner ring (bright, subtle top highlight)
-        g.setColour (Colour (0x22ffffff));
-        g.drawEllipse (cx - kr + 0.7f, cy - kr + 0.7f, kr * 2 - 1.4f, kr * 2 - 1.4f, 0.5f);
-
-        // Indicator line + dot
-        {
-            const float a  = angle - MathConstants<float>::halfPi;
-            const float cA = std::cos (a), sA = std::sin (a);
-            const float i1 = kr * 0.24f, i2 = kr * 0.75f;
+            // Fallback si l'image n'est pas chargée
             g.setColour (Colour (0xffcc2200));
-            g.drawLine (cx + cA*i1, cy + sA*i1, cx + cA*i2, cy + sA*i2, kr * 0.09f);
-            const float dr = kr * 0.07f;
-            g.fillEllipse (cx + cA*i2 - dr, cy + sA*i2 - dr, dr * 2, dr * 2);
+            g.fillEllipse ((float)ox, (float)oy, (float)size, (float)size);
         }
 
-        // Value arc (on top)
+        // Value arc par-dessus le knob
         {
+            const float cx   = ox + size * 0.5f;
+            const float cy   = oy + size * 0.5f;
+            const float arcR = size * 0.48f;
+            const float tW   = size * 0.045f;
+            const float angle = startA + pos * (endA - startA);
             Path p;
             p.addArc (cx - arcR, cy - arcR, arcR*2, arcR*2, startA, angle, true);
             g.setColour (Colour (0xffcc2200));
