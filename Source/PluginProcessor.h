@@ -54,8 +54,16 @@ private:
 
     // ---- Velvet Clip (ClipSoftly) ----
     double lastSampleL_cs, lastSampleR_cs;
-    double intermediateL[17], intermediateR[17];
+    double intermediateL[17], intermediateR[17];  // [17] so index spacing(max 16) is in bounds
     uint32_t fpdL_cs, fpdR_cs;
+
+    // ---- Hard Clip (ClipOnly3) — exact state ----
+    double lastSampleL_co3, lastSampleR_co3;
+    double intermediateL_co3[18], intermediateR_co3[18];
+    double slewL_co3[34], slewR_co3[34];
+    bool wasPosClipL_co3, wasNegClipL_co3;
+    bool wasPosClipR_co3, wasNegClipR_co3;
+    uint32_t fpdL_co3, fpdR_co3;
 
     // ---- Oversampling ----
     juce::dsp::Oversampling<float> os2x;

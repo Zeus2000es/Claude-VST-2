@@ -15,13 +15,13 @@ namespace
     constexpr int kSecH   = kSecHd + kBioH + kLabelH + kKnobH + 20; // 156
     constexpr int kClipH  = kSecHd + kBioH + 6 + 20 + 8;            // 82
 
-    // Red & black high-contrast palette
-    const juce::Colour kBg      (0xff080808);
-    const juce::Colour kPanel   (0xff1a0000);
-    const juce::Colour kBorder  (0xff5c0000);
-    const juce::Colour kAccent  (0xffcc0000);
-    const juce::Colour kText    (0xffffffff);
-    const juce::Colour kBio     (0xffcc9090);
+    // White & red high-contrast palette
+    const juce::Colour kBg      (0xfff5f0f0);
+    const juce::Colour kPanel   (0xffffffff);
+    const juce::Colour kBorder  (0xffcc2200);
+    const juce::Colour kAccent  (0xffcc2200);
+    const juce::Colour kText    (0xff111111);
+    const juce::Colour kBio     (0xff884444);
 }
 
 //==============================================================================
@@ -30,17 +30,17 @@ static void setupKnob (juce::Slider& s, juce::Label& lbl,
 {
     s.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     s.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 68, 16);
-    s.setColour (juce::Slider::rotarySliderFillColourId,    juce::Colour (0xffdd1111));
-    s.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xff5c0000));
-    s.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffff4444));
-    s.setColour (juce::Slider::textBoxTextColourId,         juce::Colour (0xffffffff));
-    s.setColour (juce::Slider::textBoxBackgroundColourId,   juce::Colour (0xff1a0000));
+    s.setColour (juce::Slider::rotarySliderFillColourId,    juce::Colour (0xffcc2200));
+    s.setColour (juce::Slider::rotarySliderOutlineColourId, juce::Colour (0xffe8c8c0));
+    s.setColour (juce::Slider::thumbColourId,               juce::Colour (0xffaa1100));
+    s.setColour (juce::Slider::textBoxTextColourId,         juce::Colour (0xff111111));
+    s.setColour (juce::Slider::textBoxBackgroundColourId,   juce::Colour (0xffffffff));
     s.setColour (juce::Slider::textBoxOutlineColourId,      juce::Colours::transparentBlack);
     parent->addAndMakeVisible (s);
 
     lbl.setText (name, juce::dontSendNotification);
     lbl.setFont (juce::FontOptions (10.5f));
-    lbl.setColour (juce::Label::textColourId, kBio);
+    lbl.setColour (juce::Label::textColourId, juce::Colour (0xff884444));
     lbl.setJustificationType (juce::Justification::centred);
     parent->addAndMakeVisible (lbl);
 }
@@ -49,10 +49,10 @@ static void setupKnob (juce::Slider& s, juce::Label& lbl,
 void AWCascadeEditor::setupBypassButton (juce::TextButton& btn, bool bypassed)
 {
     btn.setClickingTogglesState (true);
-    btn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
-    btn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2a1000));
-    btn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff44bb44));
-    btn.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff775544));
+    btn.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xfff0e8e8));
+    btn.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffffeeee));
+    btn.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff229922));
+    btn.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffaa6644));
     btn.setButtonText (bypassed ? "BYPASS" : "ON");
     addAndMakeVisible (btn);
 }
@@ -100,10 +100,10 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
 
     // Hard clip button (default ON)
     hardClipButton.setClickingTogglesState (true);
-    hardClipButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
-    hardClipButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff1a0000));
-    hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff664444));
-    hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff44bb44));
+    hardClipButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xfff0e8e8));
+    hardClipButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xfff0e8e8));
+    hardClipButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffaaaaaa));
+    hardClipButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xff229922));
     const bool initHardClip = p.apvts.getRawParameterValue ("hardClip")->load() > 0.5f;
     hardClipButton.setButtonText (initHardClip ? "HARD ON" : "HARD OFF");
     hardClipButton.onClick = [this] {
@@ -112,10 +112,10 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
 
     // Double effect button
     doubleButton.setClickingTogglesState (true);
-    doubleButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff0a0a0a));
-    doubleButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff4a1a00));
-    doubleButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff886644));
-    doubleButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffff9922));
+    doubleButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xfff0e8e8));
+    doubleButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffcc2200));
+    doubleButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffaaaaaa));
+    doubleButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffffffff));
     const bool initDouble = p.apvts.getRawParameterValue ("doubleEffect")->load() > 0.5f;
     doubleButton.setButtonText (initDouble ? "x2 ON" : "x2");
     doubleButton.onClick = [this] {
@@ -125,25 +125,25 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     // Velvet ceiling slider (horizontal)
     velvetCeilingSlider.setSliderStyle (juce::Slider::LinearHorizontal);
     velvetCeilingSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 60, 16);
-    velvetCeilingSlider.setColour (juce::Slider::trackColourId,           juce::Colour (0xffdd1111));
-    velvetCeilingSlider.setColour (juce::Slider::backgroundColourId,      juce::Colour (0xff2a0000));
-    velvetCeilingSlider.setColour (juce::Slider::thumbColourId,            juce::Colour (0xffff4444));
-    velvetCeilingSlider.setColour (juce::Slider::textBoxTextColourId,      juce::Colour (0xffffffff));
-    velvetCeilingSlider.setColour (juce::Slider::textBoxBackgroundColourId,juce::Colour (0xff1a0000));
+    velvetCeilingSlider.setColour (juce::Slider::trackColourId,            juce::Colour (0xffcc2200));
+    velvetCeilingSlider.setColour (juce::Slider::backgroundColourId,       juce::Colour (0xffe8c8c0));
+    velvetCeilingSlider.setColour (juce::Slider::thumbColourId,             juce::Colour (0xffaa1100));
+    velvetCeilingSlider.setColour (juce::Slider::textBoxTextColourId,       juce::Colour (0xff111111));
+    velvetCeilingSlider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colour (0xffffffff));
     velvetCeilingSlider.setColour (juce::Slider::textBoxOutlineColourId,   juce::Colours::transparentBlack);
     addAndMakeVisible (velvetCeilingSlider);
 
     velvetCeilingLabel.setText ("Ceiling", juce::dontSendNotification);
     velvetCeilingLabel.setFont (juce::FontOptions (10.0f));
-    velvetCeilingLabel.setColour (juce::Label::textColourId, kBio);
+    velvetCeilingLabel.setColour (juce::Label::textColourId, juce::Colour (0xff884444));
     velvetCeilingLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (velvetCeilingLabel);
 
     // Swap button
     swapButton.setClickingTogglesState (true);
-    swapButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xff1a0000));
-    swapButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff6b0000));
-    swapButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xffcc7777));
+    swapButton.setColour (juce::TextButton::buttonColourId,   juce::Colour (0xfff0e8e8));
+    swapButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xffcc2200));
+    swapButton.setColour (juce::TextButton::textColourOffId,  juce::Colour (0xff883322));
     swapButton.setColour (juce::TextButton::textColourOnId,   juce::Colour (0xffffffff));
     addAndMakeVisible (swapButton);
 
@@ -160,10 +160,10 @@ AWCascadeEditor::AWCascadeEditor (AWCascadeProcessor& p)
     oversampleBox.addItem ("Off", 1);
     oversampleBox.addItem ("2x",  2);
     oversampleBox.addItem ("4x",  3);
-    oversampleBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xff1a0000));
-    oversampleBox.setColour (juce::ComboBox::textColourId,       juce::Colour (0xffcc9090));
-    oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xff5c0000));
-    oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc0000));
+    oversampleBox.setColour (juce::ComboBox::backgroundColourId, juce::Colour (0xffffffff));
+    oversampleBox.setColour (juce::ComboBox::textColourId,       juce::Colour (0xff111111));
+    oversampleBox.setColour (juce::ComboBox::outlineColourId,    juce::Colour (0xffcc2200));
+    oversampleBox.setColour (juce::ComboBox::arrowColourId,      juce::Colour (0xffcc2200));
     addAndMakeVisible (oversampleBox);
 
     setSize (kW, kH);
@@ -243,13 +243,13 @@ void AWCascadeEditor::paint (juce::Graphics& g)
         const float norm    = juce::jlimit (0.0f, 1.0f, (levelDb + 60.0f) / 60.0f);
         const int   barW    = (int)(norm * maxW);
 
-        g.setColour (juce::Colour (0xff2a0000));
+        g.setColour (juce::Colour (0xffe8c8c0));
         g.fillRect (x, y, maxW, h);
         if (barW > 0)
         {
-            const juce::Colour col = levelDb > -6.0f  ? juce::Colour (0xffff3300)
-                                   : levelDb > -18.0f ? juce::Colour (0xffcc0000)
-                                                       : juce::Colour (0xff660000);
+            const juce::Colour col = levelDb > -6.0f  ? juce::Colour (0xffff2200)
+                                   : levelDb > -18.0f ? juce::Colour (0xffcc2200)
+                                                       : juce::Colour (0xffaa4433);
             g.setColour (col);
             g.fillRect (x, y, barW, h);
         }
@@ -264,7 +264,7 @@ void AWCascadeEditor::paint (juce::Graphics& g)
     const int mY2     = 50;
 
     g.setFont (juce::FontOptions (8.0f));
-    g.setColour (juce::Colour (0xff883333));
+    g.setColour (juce::Colour (0xff884444));
     g.drawText ("IN",  mXi, mLabelY, 20, 8, juce::Justification::left);
     g.drawText ("OUT", mXo, mLabelY, 24, 8, juce::Justification::left);
 
@@ -331,12 +331,12 @@ void AWCascadeEditor::paint (juce::Graphics& g)
 
     // ---- Oversampling row ----
     g.setFont (juce::FontOptions (10.5f));
-    g.setColour (kBio);
+    g.setColour (kText);
     g.drawText ("Oversample:", 0, yOs + 5, kW / 2 + 20, 18, juce::Justification::centredRight);
 
     // ---- Footer ----
     g.setFont (juce::FontOptions (10.0f));
-    g.setColour (juce::Colour (0xff661111));
+    g.setColour (juce::Colour (0xffaa4433));
     g.drawText ("Made by Zeus", 0, kH - 16, kW, 14, juce::Justification::centred);
 }
 
