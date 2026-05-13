@@ -22,13 +22,8 @@ else()
         "  2) Pass -DJUCE_PATH=/path/to/JUCE to cmake")
 endif()
 
-# Mac builds include AU (Logic Pro, GarageBand) + VST3
-# Windows/Linux build VST3 only
-if(APPLE)
-    set(PLUGIN_FORMATS VST3 AU)
-else()
-    set(PLUGIN_FORMATS VST3)
-endif()
+# Windows/Linux: VST3 only
+set(PLUGIN_FORMATS VST3)
 
 juce_add_plugin(ThePress
     VERSION                     1.0.0
@@ -46,10 +41,6 @@ juce_add_plugin(ThePress
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD     FALSE
     VST3_CATEGORIES             "Fx" "Dynamics"
-    AU_MAIN_TYPE                kAudioUnitType_Effect
-    AU_EXPORT_PREFIX            ThePressAU
-    HARDENED_RUNTIME_ENABLED    TRUE
-    HARDENED_RUNTIME_OPTIONS    "com.apple.security.device.audio-input"
 )
 
 target_sources(ThePress
